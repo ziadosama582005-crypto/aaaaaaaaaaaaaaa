@@ -1,0 +1,51 @@
+# ملف render.yaml - إعدادات Render
+# ضع هذا الملف في جذر المشروع
+
+services:
+  - type: web
+    name: tr-store
+    env: python
+    plan: free
+    
+    # أمر البناء
+    buildCommand: pip install -r requirements.txt
+    
+    # أمر التشغيل
+    startCommand: gunicorn app:app
+    
+    # المتغيرات البيئية
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      
+      - key: DEBUG
+        value: 'False'
+      
+      - key: SECRET_KEY
+        scope: secret
+        # أضف قيمة عشوائية قوية هنا
+        
+      - key: PAYMENT_API_KEY
+        scope: secret
+        # أضف API key من بوابة الدفع
+      
+      - key: PAYMENT_GATEWAY_SECRET
+        scope: secret
+        # أضف سر البوابة
+      
+      - key: PAYMENT_CALLBACK_URL
+        value: https://your-app-name.onrender.com/api/payment/gateway/callback
+      
+      - key: SITE_URL
+        value: https://your-app-name.onrender.com
+      
+      - key: FIREBASE_CONFIG_PATH
+        value: ./serviceAccountKey.json
+    
+    # الملفات التي سيتم حملها كـ secrets
+    secretFiles:
+      - name: serviceAccountKey.json
+        content: "" # ضع محتوى serviceAccountKey.json هنا
+
+# التوثيق:
+# https://render.com/docs/deploy-flask

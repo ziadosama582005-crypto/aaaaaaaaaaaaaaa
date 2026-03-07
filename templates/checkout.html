@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}صفحة الدفع - {{ config.SITE_NAME }}{% endblock %}
+
+{% block content %}
+<h1 style="font-size: 32px; margin-bottom: 30px;">
+    <i class="fas fa-credit-card"></i>
+    إتمام الشراء
+</h1>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
+    <div>
+        <div class="card" style="margin-bottom: 25px;">
+            <h2 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-info-circle"></i>
+                بيانات الطلب
+            </h2>
+            <div id="order-summary"></div>
+        </div>
+    </div>
+    
+    <div>
+        <div class="card">
+            <h2 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-wallet"></i>
+                طريقة الدفع
+            </h2>
+            
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 12px; background: rgba(108, 92, 231, 0.1); border-radius: 8px; border: 2px solid var(--primary);">
+                    <input type="radio" name="payment_method" value="wallet" checked>
+                    <i class="fas fa-piggy-bank"></i>
+                    <span>من المحفظة</span>
+                </label>
+                
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 12px; background: rgba(100, 100, 100, 0.1); border-radius: 8px; border: 2px solid rgba(100, 100, 100, 0.3);">
+                    <input type="radio" name="payment_method" value="card">
+                    <i class="fas fa-credit-card"></i>
+                    <span>بطاقة ائتمان</span>
+                </label>
+            </div>
+            
+            <button class="btn btn-primary" onclick="completePayment()" style="width: 100%; margin-top: 25px; justify-content: center;">
+                <i class="fas fa-check"></i>
+                إتمام الدفع
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function loadOrderSummary() {
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const container = document.getElementById('order-summary');
+    
+    if (cart.length === 0) {
+        window.location.href = '/cart';
+        return;
+    }
+    
+    let html = '<div style="display: flex; flex-direction: column; gap: 15px;">';
+    let total = 0;
+    
+    cart.forEach((item, index) => {
+        const itemTotal = item.price * item.quantity;
+        total += itemTotal;
+        
+        html += `
+            <div style="display: flex; justify-content: space-between; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
+                <div>
+                    <p style="font-weight: 600; margin-bottom: 5px;">${item.name}</p>
+                    <p style="font-size: 13px; color: var(--text-muted);">الكمية: ${item.quantity} × ${item.price} ر.س</p>
+                </div>
+                <p style="font-weight: 600; color: var(--success);">${itemTotal} ر.س</p>
+            </div>
+        `;
+    });
+    
+    html += `
+        <div style="display: flex; justify-content: space-between; padding-top: 15px; font-size: 18px; font-weight: bold;">
+            <span>الإجمالي:</span>
+            <span style="color: var(--success);">${total} ر.س</span>
+        </div>
+    `;
+    
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+function completePayment() {
+    const method = document.querySelector('input[name="payment_method"]:checked').value;
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    
+    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    fetch('/api/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            items: cart,
+            total: total,
+            payment_method: method
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ تم الطلب برقم: ' + data.order_id);
+            localStorage.removeItem('cart');
+            window.location.href = '/orders';
+        } else {
+            alert('❌ حدث خطأ: ' + (data.message || 'خطأ غير معروف'));
+        }
+    })
+    .catch(err => alert('❌ خطأ: ' + err.message));
+}
+
+loadOrderSummary();
+</script>
+{% endblock %}

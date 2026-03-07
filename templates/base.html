@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ config.SITE_NAME }}{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary: #6c5ce7;
+            --primary-light: #a29bfe;
+            --bg: #0f0f1a;
+            --card: rgba(22, 33, 62, 0.95);
+            --text: #fff;
+            --text-muted: rgba(255,255,255,0.7);
+            --success: #00b894;
+            --warning: #ffc107;
+            --danger: #e74c3c;
+            --border-color: rgba(108, 92, 231, 0.2);
+        }
+        
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: linear-gradient(135deg, var(--bg) 0%, #1a1a2e 100%);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        header {
+            background: var(--card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-light);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo i {
+            font-size: 28px;
+        }
+        
+        .nav {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+        }
+        
+        .nav a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .nav a:hover {
+            color: var(--primary-light);
+        }
+        
+        .nav-badge {
+            background: var(--danger);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .main-content {
+            min-height: calc(100vh - 100px);
+            padding: 30px 0;
+        }
+        
+        footer {
+            background: var(--card);
+            border-top: 1px solid var(--border-color);
+            padding: 30px 0;
+            margin-top: 50px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-light);
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: var(--text);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.15);
+        }
+        
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(108, 92, 231, 0.2);
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .alert-success {
+            background: rgba(0, 184, 148, 0.1);
+            border: 1px solid rgba(0, 184, 148, 0.3);
+            color: #b7ffe7;
+        }
+        
+        .alert-danger {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            color: #ffd1cc;
+        }
+        
+        .alert-info {
+            background: rgba(74, 144, 226, 0.1);
+            border: 1px solid rgba(74, 144, 226, 0.3);
+            color: #b3d9ff;
+        }
+        
+        @media (max-width: 768px) {
+            .nav {
+                gap: 15px;
+            }
+            
+            .header-content {
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">
+                    <i class="fas fa-store"></i>
+                    {{ config.SITE_NAME }}
+                </a>
+                
+                <nav class="nav">
+                    <a href="/">
+                        <i class="fas fa-home"></i>
+                        الرئيسية
+                    </a>
+                    <a href="/cart">
+                        <i class="fas fa-shopping-cart"></i>
+                        السلة
+                        <span class="nav-badge" id="cart-count">0</span>
+                    </a>
+                    <a href="/orders">
+                        <i class="fas fa-receipt"></i>
+                        الطلبات
+                    </a>
+                    <a href="/wallet">
+                        <i class="fas fa-wallet"></i>
+                        المحفظة
+                    </a>
+                </nav>
+            </div>
+        </div>
+    </header>
+    
+    <main class="main-content">
+        <div class="container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+    
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 {{ config.SITE_NAME }}. جميع الحقوق محفوظة.</p>
+        </div>
+    </footer>
+    
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

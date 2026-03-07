@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}المحفظة - {{ config.SITE_NAME }}{% endblock %}
+
+{% block content %}
+<h1 style="font-size: 32px; margin-bottom: 30px;">
+    <i class="fas fa-wallet"></i>
+    محفظتي
+</h1>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
+    <div>
+        <div class="card" style="margin-bottom: 25px; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); padding: 40px;">
+            <p style="font-size: 14px; color: rgba(255,255,255,0.8); margin-bottom: 10px;">رصيدك الحالي</p>
+            <h1 id="balance" style="font-size: 48px; color: white; margin: 0;">0.00 ر.س</h1>
+        </div>
+        
+        <div class="card" style="margin-bottom: 25px;">
+            <h2 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-history"></i>
+                آخر العمليات
+            </h2>
+            <div id="transactions-list"></div>
+        </div>
+    </div>
+    
+    <div>
+        <div class="card">
+            <h2 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-plus-circle"></i>
+                إضافة رصيد
+            </h2>
+            
+            <form id="add-balance-form" style="display: flex; flex-direction: column; gap: 15px;">
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-muted);">المبلغ (ر.س)</label>
+                    <input type="number" id="amount" placeholder="أدخل المبلغ" min="1" step="0.01" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.1); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text); font-family: 'Tajawal';">
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+                    <i class="fas fa-plus"></i>
+                    إضافة رصيد
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function loadBalance() {
+    fetch('/api/get-balance')
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById('balance').textContent = data.balance.toFixed(2) + ' ر.س';
+    })
+    .catch(err => console.error(err));
+}
+
+function loadTransactions() {
+    fetch('/api/get-transactions')
+    .then(res => res.json())
+    .then(data => {
+        const container = document.getElementById('transactions-list');
+        
+        if (!data.transactions || data.transactions.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-muted);">لا توجد عمليات</p>';
+            return;
+        }
+        
+        let html = '';
+        data.transactions.forEach(tx => {
+            const date = new Date(tx.timestamp).toLocaleDateString('ar-SA');
+            const icon = tx.type === 'balance_add' ? 'plus' : 'minus';
+            const color = tx.type === 'balance_add' ? 'var(--success)' : 'var(--danger)';
+            
+            html += `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color);">
+                    <div>
+                        <p style="font-size: 14px; margin-bottom: 5px;">${tx.description}</p>
+                        <p style="font-size: 12px; color: var(--text-muted);">${date}</p>
+                    </div>
+                    <p style="color: ${color}; font-weight: bold;">
+                        <i class="fas fa-${icon}"></i>
+                        ${tx.amount.toFixed(2)}
+                    </p>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    })
+    .catch(err => console.error(err));
+}
+
+document.getElementById('add-balance-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const amount = parseFloat(document.getElementById('amount').value);
+    
+    if (amount < 1) {
+        alert('❌ أدخل مبلغ صحيح');
+        return;
+    }
+    
+    fetch('/api/add-balance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amount })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ تمت إضافة الرصيد');
+            document.getElementById('add-balance-form').reset();
+            loadBalance();
+            loadTransactions();
+        } else {
+            alert('❌ ' + (data.message || 'خطأ'));
+        }
+    })
+    .catch(err => alert('❌ خطأ: ' + err.message));
+});
+
+loadBalance();
+loadTransactions();
+setInterval(loadBalance, 10000);
+</script>
+{% endblock %}

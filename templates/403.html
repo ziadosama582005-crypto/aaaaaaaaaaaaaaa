@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}403 - الوصول مرفوض{% endblock %}
+
+{% block content %}
+<div style="text-align: center; padding: 100px 20px;">
+    <h1 style="font-size: 120px; color: var(--danger); margin: 0;">403</h1>
+    <h2 style="font-size: 32px; margin: 20px 0;">الوصول مرفوض</h2>
+    <p style="font-size: 16px; color: var(--text-muted); margin-bottom: 30px;">
+        عذراً، ليس لديك صلاحية للوصول إلى هذه الصفحة.
+    </p>
+    <a href="/" class="btn btn-primary">
+        <i class="fas fa-home"></i>
+        العودة للرئيسية
+    </a>
+</div>
+{% endblock %}
