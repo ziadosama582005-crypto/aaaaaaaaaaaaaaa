@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}التقارير والإحصائيات - {{ config.SITE_NAME }}{% endblock %}
+
+{% block content %}
+<style>
+    .admin-header {
+        margin-bottom: 30px;
+    }
+
+    .admin-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text);
+    }
+
+    .reports-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .report-card {
+        background: var(--card);
+        border-radius: 12px;
+        padding: 20px;
+    }
+
+    .report-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .chart-container {
+        width: 100%;
+        height: 300px;
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        padding: 20px 0;
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .chart-bar {
+        flex: 1;
+        background: linear-gradient(to top, var(--primary), var(--primary-light));
+        border-radius: 6px 6px 0 0;
+        min-height: 20px;
+        display: flex;
+        flex-direction: column-reverse;
+        align-items: center;
+        justify-content: flex-end;
+        padding: 5px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+    }
+
+    .chart-bar:hover {
+        background: linear-gradient(to top, var(--primary), var(--secondary));
+        transform: translateY(-5px);
+    }
+
+    .chart-bar-value {
+        font-size: 11px;
+        font-weight: 600;
+        color: white;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    .chart-bar-label {
+        font-size: 10px;
+        color: var(--text-muted);
+        margin-top: 8px;
+        text-align: center;
+    }
+
+    .stats-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .stats-table th {
+        background: var(--border);
+        padding: 12px;
+        text-align: right;
+        font-weight: 600;
+        font-size: 12px;
+        color: var(--text-muted);
+        border-bottom: 2px solid var(--border);
+    }
+
+    .stats-table td {
+        padding: 12px;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+    }
+
+    .stats-table tr:hover {
+        background: rgba(108, 92, 231, 0.05);
+    }
+
+    .metric {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+    }
+
+    .metric-label {
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+
+    .metric-value {
+        color: var(--text);
+        font-weight: 700;
+    }
+
+    .export-btn {
+        padding: 8px 16px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        font-family: 'Tajawal', sans-serif;
+        transition: all 0.3s ease;
+    }
+
+    .export-btn:hover {
+        background: var(--primary-dark);
+        transform: translateY(-2px);
+    }
+
+    @media (max-width: 1024px) {
+        .reports-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .chart-container {
+            height: 200px;
+        }
+    }
+</style>
+
+<div class="admin-header">
+    <h1 class="admin-title">📈 التقارير والإحصائيات</h1>
+</div>
+
+<!-- المبيعات اليومية -->
+<div class="reports-grid">
+    <div class="report-card">
+        <div class="report-title">
+            📊 المبيعات اليومية (آخر 7 أيام)
+            <button class="export-btn" onclick="exportData()">📥 تنزيل</button>
+        </div>
+
+        <div class="chart-container" id="daily-sales-chart">
+            <!-- سيتم ملؤه بـ JavaScript -->
+        </div>
+
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>التاريخ</th>
+                    <th>المبيعات</th>
+                </tr>
+            </thead>
+            <tbody id="daily-sales-table">
+                <!-- سيتم ملؤه بـ JavaScript -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- الإحصائيات العامة -->
+    <div class="report-card">
+        <div class="report-title">📋 الإحصائيات العامة</div>
+
+        <div class="metric">
+            <span class="metric-label">إجمالي المستخدمين</span>
+            <span class="metric-value" id="total-users">0</span>
+        </div>
+
+        <div class="metric">
+            <span class="metric-label">إجمالي المنتجات</span>
+            <span class="metric-value" id="total-products">0</span>
+        </div>
+
+        <div class="metric">
+            <span class="metric-label">إجمالي الطلبات</span>
+            <span class="metric-value" id="total-orders">0</span>
+        </div>
+
+        <div class="metric">
+            <span class="metric-label">إجمالي الإيرادات</span>
+            <span class="metric-value" id="total-revenue">0 ر.س</span>
+        </div>
+
+        <div class="metric">
+            <span class="metric-label">متوسط قيمة الطلب</span>
+            <span class="metric-value" id="avg-order">0 ر.س</span>
+        </div>
+
+        <div class="metric">
+            <span class="metric-label">معدل التحويل</span>
+            <span class="metric-value" id="conversion-rate">0%</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    // جلب البيانات وتحديثها
+    async function loadReports() {
+        try {
+            const response = await fetch('/admin/api/stats');
+            const data = await response.json();
+
+            // تحديث الإحصائيات
+            document.getElementById('total-users').textContent = data.users || 0;
+            document.getElementById('total-products').textContent = data.products || 0;
+            document.getElementById('total-orders').textContent = data.sales || 0;
+            document.getElementById('total-revenue').textContent = (data.revenue || 0) + ' ر.س';
+
+            // حساب المتوسطات
+            const avgOrder = data.sales > 0 ? (data.revenue / data.sales).toFixed(2) : 0;
+            document.getElementById('avg-order').textContent = avgOrder + ' ر.س';
+
+            // حساب معدل التحويل
+            const conversionRate = data.users > 0 ? ((data.sales / data.users) * 100).toFixed(2) : 0;
+            document.getElementById('conversion-rate').textContent = conversionRate + '%';
+
+            // رسم الرسم البياني (محاكاة)
+            drawChart();
+        } catch (error) {
+            console.error('❌ خطأ في جلب البيانات:', error);
+        }
+    }
+
+    function drawChart() {
+        // بيانات محاكاة للمبيعات اليومية
+        const dailySales = {
+            'الأحد': 1200,
+            'الإثنين': 1900,
+            'الثلاثاء': 1500,
+            'الأربعاء': 2200,
+            'الخميس': 1800,
+            'الجمعة': 2400,
+            'السبت': 1600
+        };
+
+        const maxSale = Math.max(...Object.values(dailySales));
+        const chartContainer = document.getElementById('daily-sales-chart');
+        const tableBody = document.getElementById('daily-sales-table');
+
+        chartContainer.innerHTML = '';
+        tableBody.innerHTML = '';
+
+        let total = 0;
+
+        for (const [day, sales] of Object.entries(dailySales)) {
+            total += sales;
+
+            // إضافة العمود
+            const barHeight = (sales / maxSale) * 250;
+            const bar = document.createElement('div');
+            bar.className = 'chart-bar';
+            bar.style.height = barHeight + 'px';
+            bar.innerHTML = `
+                <div class="chart-bar-value">${sales}</div>
+                <div class="chart-bar-label">${day}</div>
+            `;
+            chartContainer.appendChild(bar);
+
+            // إضافة الصف
+            const row = tableBody.insertRow();
+            row.innerHTML = `
+                <td>${day}</td>
+                <td>${sales} ر.س</td>
+            `;
+        }
+
+        // إضافة الإجمالي
+        const totalRow = tableBody.insertRow();
+        totalRow.style.fontWeight = '700';
+        totalRow.style.background = 'rgba(108, 92, 231, 0.1)';
+        totalRow.innerHTML = `
+            <td>الإجمالي</td>
+            <td>${total} ر.س</td>
+        `;
+    }
+
+    function exportData() {
+        alert('📥 جاري تحضير تنزيل البيانات...\nسيتم تنزيل ملف CSV بجميع الإحصائيات');
+    }
+
+    // تحديث البيانات عند تحميل الصفحة
+    loadReports();
+
+    // تحديث البيانات كل 5 دقائق
+    setInterval(loadReports, 300000);
+</script>
+{% endblock %}

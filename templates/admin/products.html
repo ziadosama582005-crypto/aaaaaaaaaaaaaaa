@@ -1,0 +1,505 @@
+{% extends "base.html" %}
+
+{% block title %}إدارة المنتجات - {{ config.SITE_NAME }}{% endblock %}
+
+{% block content %}
+<style>
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        gap: 15px;
+    }
+
+    .admin-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text);
+    }
+
+    .btn-add {
+        padding: 12px 24px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        font-family: 'Tajawal', sans-serif;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-add:hover {
+        background: var(--primary-dark);
+        transform: translateY(-2px);
+    }
+
+    .products-container {
+        background: var(--card);
+        border-radius: 12px;
+        padding: 20px;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table th {
+        background: var(--border);
+        padding: 15px;
+        text-align: right;
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text-muted);
+        border-bottom: 2px solid var(--border);
+    }
+
+    .table td {
+        padding: 15px;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+    }
+
+    .table tr:hover {
+        background: rgba(108, 92, 231, 0.05);
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 6px 12px;
+        background: var(--primary-light);
+        color: white;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge.sold {
+        background: #F44336;
+    }
+
+    .badge.available {
+        background: #4CAF50;
+    }
+
+    .actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-action {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        font-family: 'Tajawal', sans-serif;
+        transition: all 0.3s ease;
+    }
+
+    .btn-edit {
+        background: var(--primary-light);
+        color: white;
+    }
+
+    .btn-edit:hover {
+        background: var(--primary);
+    }
+
+    .btn-delete {
+        background: #F44336;
+        color: white;
+    }
+
+    .btn-delete:hover {
+        background: #d32f2f;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: var(--card);
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-title {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        color: var(--text);
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 15px;
+    }
+
+    .form-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .form-input,
+    .form-select,
+    .form-textarea {
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-family: 'Tajawal', sans-serif;
+        font-size: 13px;
+        background: var(--card);
+        color: var(--text);
+    }
+
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1);
+    }
+
+    .form-textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    .btn-modal {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        font-family: 'Tajawal', sans-serif;
+        transition: all 0.3s ease;
+        flex: 1;
+    }
+
+    .btn-save {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-save:hover {
+        background: var(--primary-dark);
+    }
+
+    .btn-cancel {
+        background: var(--border);
+        color: var(--text);
+    }
+
+    .btn-cancel:hover {
+        background: var(--text-muted);
+        color: white;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text-muted);
+    }
+
+    .alert {
+        padding: 12px 15px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+        font-size: 13px;
+    }
+
+    .alert.success {
+        background: var(--success-light);
+        color: var(--success);
+        border-left: 4px solid var(--success);
+    }
+
+    .alert.error {
+        background: var(--danger-light);
+        color: var(--danger);
+        border-left: 4px solid var(--danger);
+    }
+
+    @media (max-width: 768px) {
+        .admin-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .table th,
+        .table td {
+            padding: 10px;
+            font-size: 12px;
+        }
+
+        .actions {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<div class="admin-header">
+    <h1 class="admin-title">📦 إدارة المنتجات</h1>
+    <button class="btn-add" onclick="openAddModal()">
+        <i class="fas fa-plus"></i>
+        إضافة منتج
+    </button>
+</div>
+
+<div id="alert-container"></div>
+
+<div class="products-container">
+    {% if products %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>اسم المنتج</th>
+                    <th>الفئة</th>
+                    <th>السعر</th>
+                    <th>نوع التسليم</th>
+                    <th>الحالة</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                    <tr>
+                        <td>{{ product.item_name[:30] }}</td>
+                        <td>{{ product.category_id or '-' }}</td>
+                        <td>{{ product.price }} ر.س</td>
+                        <td>
+                            {% if product.delivery_type == 'instant' %}
+                                ⚡ فوري
+                            {% else %}
+                                📦 يدوي
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {% if product.sold %}sold{% else %}available{% endif %}">
+                                {% if product.sold %}مباع{% else %}متاح{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="actions">
+                                <button class="btn-action btn-edit" onclick="editProduct('{{ product.id }}', {{ product | tojson }})">
+                                    ✏️ تعديل
+                                </button>
+                                <button class="btn-action btn-delete" onclick="deleteProduct('{{ product.id }}')">
+                                    🗑️ حذف
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="empty-state">
+            <p style="font-size: 16px;">📭 لا توجد منتجات</p>
+            <p style="font-size: 13px; margin-top: 10px;">ابدأ بإضافة منتجات جديدة</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal لإضافة/تعديل منتج -->
+<div id="product-modal" class="modal">
+    <div class="modal-content">
+        <h2 class="modal-title" id="modal-title">إضافة منتج جديد</h2>
+
+        <form id="product-form" onsubmit="handleSubmit(event)">
+            <div class="form-group">
+                <label class="form-label">اسم المنتج *</label>
+                <input type="text" id="item_name" class="form-input" required placeholder="أدخل اسم المنتج">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">الفئة *</label>
+                <input type="text" id="category_id" class="form-input" required placeholder="أدخل معرّف الفئة">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">السعر *</label>
+                <input type="number" id="price" class="form-input" step="0.01" required placeholder="أدخل السعر">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">نوع التسليم *</label>
+                <select id="delivery_type" class="form-select" required>
+                    <option value="instant">⚡ فوري</option>
+                    <option value="manual">📦 يدوي</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">الحالة</label>
+                <select id="sold" class="form-select">
+                    <option value="false">متاح</option>
+                    <option value="true">مباع</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">الوصف</label>
+                <textarea id="description" class="form-textarea" placeholder="أدخل وصف المنتج"></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <button type="submit" class="btn-modal btn-save">💾 حفظ</button>
+                <button type="button" class="btn-modal btn-cancel" onclick="closeModal()">✕ إلغاء</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    let editingId = null;
+
+    function openAddModal() {
+        editingId = null;
+        document.getElementById('modal-title').textContent = 'إضافة منتج جديد';
+        document.getElementById('product-form').reset();
+        document.getElementById('product-modal').classList.add('active');
+    }
+
+    function editProduct(id, product) {
+        editingId = id;
+        document.getElementById('modal-title').textContent = 'تعديل المنتج';
+        document.getElementById('item_name').value = product.item_name || '';
+        document.getElementById('category_id').value = product.category_id || '';
+        document.getElementById('price').value = product.price || '';
+        document.getElementById('delivery_type').value = product.delivery_type || 'instant';
+        document.getElementById('sold').value = product.sold ? 'true' : 'false';
+        document.getElementById('description').value = product.description || '';
+        document.getElementById('product-modal').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('product-modal').classList.remove('active');
+        editingId = null;
+    }
+
+    async function handleSubmit(event) {
+        event.preventDefault();
+
+        const data = {
+            item_name: document.getElementById('item_name').value,
+            category_id: document.getElementById('category_id').value,
+            price: parseFloat(document.getElementById('price').value),
+            delivery_type: document.getElementById('delivery_type').value,
+            sold: document.getElementById('sold').value === 'true',
+            description: document.getElementById('description').value
+        };
+
+        try {
+            let url, method;
+            if (editingId) {
+                url = `/admin/api/products/${editingId}/update`;
+                method = 'POST';
+            } else {
+                url = '/admin/api/products/create';
+                method = 'POST';
+            }
+
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                showAlert('✅ تم الحفظ بنجاح!', 'success');
+                closeModal();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showAlert(result.message || 'حدث خطأ', 'error');
+            }
+        } catch (error) {
+            console.error('❌ خطأ:', error);
+            showAlert('حدث خطأ في الحفظ', 'error');
+        }
+    }
+
+    async function deleteProduct(id) {
+        if (!confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
+
+        try {
+            const response = await fetch(`/admin/api/products/${id}/delete`, {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                showAlert('✅ تم الحذف بنجاح!', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showAlert(result.message || 'حدث خطأ', 'error');
+            }
+        } catch (error) {
+            console.error('❌ خطأ:', error);
+            showAlert('حدث خطأ في الحذف', 'error');
+        }
+    }
+
+    function showAlert(message, type) {
+        const container = document.getElementById('alert-container');
+        const alert = document.createElement('div');
+        alert.className = `alert ${type}`;
+        alert.textContent = message;
+        container.innerHTML = '';
+        container.appendChild(alert);
+
+        setTimeout(() => {
+            alert.style.opacity = '0';
+            alert.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => alert.remove(), 300);
+        }, 4000);
+    }
+
+    // إغلاق Modal عند الضغط على Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+    });
+
+    // إغلاق Modal عند الضغط خارجه
+    document.getElementById('product-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'product-modal') closeModal();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+{% block title %}مشترياتي{% endblock %}
+{% block extra_css %}
+<style>
+    .purchase-card {
+        background: linear-gradient(145deg, var(--card) 0%, #16213e 100%);
+        border-radius: 20px;
+        overflow: hidden;
+        margin-bottom: 16px;
+        border: 1px solid rgba(162, 155, 254, 0.2);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    .purchase-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(102, 126, 234, 0.2);
+    }
+    
+    .card-main {
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .card-icon {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        flex-shrink: 0;
+    }
+    
+    .card-info {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .card-title {
+        font-size: 17px;
+        font-weight: bold;
+        margin-bottom: 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .card-meta {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    
+    .meta-item {
+        font-size: 13px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .meta-item.price {
+        color: var(--success);
+        font-weight: bold;
+        font-size: 15px;
+    }
+    
+    .card-badge {
+        background: rgba(0, 184, 148, 0.2);
+        color: var(--success);
+        padding: 6px 12px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .view-details-btn {
+        background: rgba(108, 92, 231, 0.2);
+        color: var(--primary-light);
+        border: 1px solid rgba(108, 92, 231, 0.3);
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    
+    .view-details-btn:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+    
+    /* Modal */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 1000;
+        overflow-y: auto;
+    }
+    
+    .modal-overlay.active {
+        display: block;
+    }
+    
+    .modal-content {
+        background: var(--card);
+        border-radius: 20px;
+        max-width: 500px;
+        margin: 40px auto;
+        border: 1px solid var(--border-color);
+        overflow: hidden;
+    }
+    
+    .modal-header {
+        background: var(--primary);
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .modal-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: white;
+        margin: 0;
+    }
+    
+    .close-modal-btn {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
+    
+    .modal-section {
+        margin-bottom: 20px;
+    }
+    
+    .section-title {
+        font-size: 14px;
+        color: var(--primary-light);
+        font-weight: bold;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+    }
+    
+    .order-info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+    
+    .order-info-item {
+        background: rgba(255, 255, 255, 0.03);
+        padding: 12px;
+        border-radius: 10px;
+        text-align: center;
+    }
+    
+    .order-info-label {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-bottom: 5px;
+    }
+    
+    .order-info-value {
+        font-size: 15px;
+        font-weight: bold;
+    }
+    
+    .order-info-value.price {
+        color: var(--success);
+    }
+    
+    .order-info-value.category {
+        color: var(--primary-light);
+    }
+    
+    .hidden-data-box {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 15px;
+    }
+    
+    .hidden-data-content {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 12px;
+        border-radius: 8px;
+        word-break: break-all;
+        font-family: monospace;
+        font-size: 12px;
+        margin-bottom: 10px;
+    }
+    
+    .copy-data-btn {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        width: 100%;
+        font-weight: 600;
+    }
+    
+    .copy-data-btn:hover {
+        background: var(--primary-light);
+    }
+    
+    .empty-purchases {
+        text-align: center;
+        padding: 80px 20px;
+    }
+    
+    .empty-icon {
+        font-size: 80px;
+        margin-bottom: 20px;
+        opacity: 0.3;
+    }
+    
+    .empty-text {
+        color: #666;
+        font-size: 18px;
+        margin-bottom: 25px;
+    }
+    
+    .shop-btn {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 14px 35px;
+        border-radius: 25px;
+        text-decoration: none;
+        font-weight: bold;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+    
+    .shop-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto;">
+    <h2 style="margin-bottom: 20px; font-size: 22px;">
+        <i class="fas fa-shopping-bag"></i>
+        مشترياتي
+    </h2>
+    
+    <div id="purchases-container"></div>
+</div>
+
+<script>
+// تحميل المشتريات
+async function loadPurchases() {
+    const container = document.getElementById('purchases-container');
+    
+    try {
+        const res = await fetch('/api/get-user-purchases');
+        const data = await res.json();
+        
+        if (!data.purchases || data.purchases.length === 0) {
+            container.innerHTML = `
+                <div class="empty-purchases">
+                    <div class="empty-icon">🛍️</div>
+                    <p class="empty-text">لم تقم بأي عملية شراء بعد</p>
+                    <a href="/shop" class="shop-btn">
+                        <i class="fas fa-store"></i>
+                        تصفح المتجر
+                    </a>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        data.purchases.forEach((purchase, index) => {
+            const date = new Date(purchase.purchased_at).toLocaleDateString('ar-SA');
+            
+            html += `
+                <div class="purchase-card">
+                    <div class="card-main">
+                        <div class="card-icon">🎮</div>
+                        <div class="card-info">
+                            <div class="card-title">${purchase.item_name}</div>
+                            <div class="card-meta">
+                                <span class="meta-item price">${purchase.price} ر.س</span>
+                                <span class="meta-item">📅 ${date}</span>
+                            </div>
+                        </div>
+                        <div class="card-badge">✓ مكتمل</div>
+                    </div>
+                    <button class="view-details-btn" onclick="openModal(${index})" style="width: calc(100% - 40px); margin: 0 20px 20px;">
+                        <i class="fas fa-eye"></i>
+                        بيانات الطلب
+                    </button>
+                </div>
+                
+                <div class="modal-overlay" id="modal-${index}" onclick="closeModalOnOverlay(event, ${index})">
+                    <div class="modal-content" onclick="event.stopPropagation()">
+                        <div class="modal-header">
+                            <h3 class="modal-title">${purchase.item_name}</h3>
+                            <button class="close-modal-btn" onclick="closeModal(${index})">✕</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="modal-section">
+                                <div class="section-title">معلومات الطلب</div>
+                                <div class="order-info-grid">
+                                    <div class="order-info-item">
+                                        <div class="order-info-label">السعر</div>
+                                        <div class="order-info-value price">${purchase.price} ر.س</div>
+                                    </div>
+                                    <div class="order-info-item">
+                                        <div class="order-info-label">الفئة</div>
+                                        <div class="order-info-value category">${purchase.category}</div>
+                                    </div>
+                                    <div class="order-info-item">
+                                        <div class="order-info-label">التاريخ</div>
+                                        <div class="order-info-value">${date}</div>
+                                    </div>
+                                    <div class="order-info-item">
+                                        <div class="order-info-label">التسليم</div>
+                                        <div class="order-info-value">${purchase.delivery_type === 'instant' ? 'فوري' : 'يدوي'}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            ${purchase.hidden_data ? `
+                                <div class="modal-section">
+                                    <div class="section-title">بيانات الاشتراك</div>
+                                    <div class="hidden-data-box">
+                                        <div class="hidden-data-content" id="data-${index}">${purchase.hidden_data}</div>
+                                        <button class="copy-data-btn" onclick="copyData(${index})">
+                                            <i class="fas fa-copy"></i>
+                                            نسخ البيانات
+                                        </button>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    } catch (err) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px 20px; background: var(--card); border-radius: 12px;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: var(--danger); margin-bottom: 20px;"></i>
+                <p style="color: var(--danger);">❌ خطأ: ${err.message}</p>
+            </div>
+        `;
+    }
+}
+
+function openModal(index) {
+    const modal = document.getElementById('modal-' + index);
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal(index) {
+    const modal = document.getElementById('modal-' + index);
+    modal.classList.remove('active');
+    document.body.style.overflow = 'auto';
+}
+
+function closeModalOnOverlay(event, index) {
+    if (event.target.classList.contains('modal-overlay')) {
+        closeModal(index);
+    }
+}
+
+function copyData(index) {
+    const data = document.getElementById('data-' + index).textContent;
+    navigator.clipboard.writeText(data);
+    alert('✅ تم نسخ البيانات');
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.active').forEach(modal => {
+            modal.classList.remove('active');
+        });
+        document.body.style.overflow = 'auto';
+    }
+});
+
+loadPurchases();
+</script>
+{% endblock %}

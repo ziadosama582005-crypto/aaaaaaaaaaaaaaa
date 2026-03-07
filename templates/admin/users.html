@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}إدارة المستخدمين - {{ config.SITE_NAME }}{% endblock %}
+
+{% block content %}
+<style>
+    .admin-header {
+        margin-bottom: 30px;
+    }
+
+    .admin-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text);
+    }
+
+    .users-container {
+        background: var(--card);
+        border-radius: 12px;
+        padding: 20px;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table th {
+        background: var(--border);
+        padding: 15px;
+        text-align: right;
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text-muted);
+        border-bottom: 2px solid var(--border);
+    }
+
+    .table td {
+        padding: 15px;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+    }
+
+    .table tr:hover {
+        background: rgba(108, 92, 231, 0.05);
+    }
+
+    .user-info {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .user-name {
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .user-id {
+        font-size: 11px;
+        color: var(--text-muted);
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        background: #4CAF50;
+        color: white;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-action {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        font-family: 'Tajawal', sans-serif;
+        transition: all 0.3s ease;
+    }
+
+    .btn-view {
+        background: var(--primary-light);
+        color: white;
+    }
+
+    .btn-view:hover {
+        background: var(--primary);
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: var(--card);
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        position: relative;
+    }
+
+    .modal-title {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        color: var(--text);
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+    }
+
+    .detail-label {
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+
+    .detail-value {
+        color: var(--text);
+    }
+
+    .btn-close {
+        position: absolute;
+        top: 15px;
+        left: 15px;
+        background: var(--border);
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 18px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-close:hover {
+        background: var(--text-muted);
+        color: white;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text-muted);
+    }
+
+    @media (max-width: 768px) {
+        .table th,
+        .table td {
+            padding: 10px;
+            font-size: 12px;
+        }
+
+        .actions {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<div class="admin-header">
+    <h1 class="admin-title">👥 إدارة المستخدمين</h1>
+</div>
+
+<div class="users-container">
+    {% if users %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>البيانات</th>
+                    <th>بريد إلكتروني</th>
+                    <th>الرصيد</th>
+                    <th>الطلبات</th>
+                    <th>الحالة</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                    <tr>
+                        <td>
+                            <div class="user-info">
+                                <span class="user-name">{{ user.phone or 'بدون اسم' }}</span>
+                                <span class="user-id">ID: {{ user.id[:8] }}</span>
+                            </div>
+                        </td>
+                        <td>{{ user.email or '-' }}</td>
+                        <td>{{ user.balance or 0 }} ر.س</td>
+                        <td>{{ user.purchases_count or 0 }}</td>
+                        <td>
+                            <span class="status-badge">✓ نشط</span>
+                        </td>
+                        <td>
+                            <div class="actions">
+                                <button class="btn-action btn-view" onclick="viewUserDetails({{ user | tojson }})">
+                                    👁 عرض
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="empty-state">
+            <p style="font-size: 16px;">👥 لا يوجد مستخدمون</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal لعرض تفاصيل المستخدم -->
+<div id="user-modal" class="modal">
+    <div class="modal-content">
+        <button class="btn-close" onclick="closeUserModal()">✕</button>
+        
+        <h2 class="modal-title">📱 تفاصيل المستخدم</h2>
+
+        <div class="detail-row">
+            <span class="detail-label">معرّف المستخدم</span>
+            <span class="detail-value" id="user-id">-</span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">الهاتف</span>
+            <span class="detail-value" id="user-phone">-</span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">البريد الإلكتروني</span>
+            <span class="detail-value" id="user-email">-</span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">الرصيد</span>
+            <span class="detail-value" id="user-balance">-</span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">الطلبات</span>
+            <span class="detail-value" id="user-purchases">-</span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">تاريخ التسجيل</span>
+            <span class="detail-value" id="user-created">-</span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">آخر نشاط</span>
+            <span class="detail-value" id="user-last-active">-</span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">الحالة</span>
+            <span class="detail-value" id="user-status">✓ نشط</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    function viewUserDetails(user) {
+        document.getElementById('user-id').textContent = user.id || '-';
+        document.getElementById('user-phone').textContent = user.phone || '-';
+        document.getElementById('user-email').textContent = user.email || '-';
+        document.getElementById('user-balance').textContent = (user.balance || 0) + ' ر.س';
+        document.getElementById('user-purchases').textContent = user.purchases_count || 0;
+        
+        const created = new Date(user.created_at?._seconds * 1000 || 0);
+        document.getElementById('user-created').textContent = created.toLocaleString('ar-SA') || '-';
+        
+        const lastActive = new Date(user.last_active?._seconds * 1000 || 0);
+        document.getElementById('user-last-active').textContent = lastActive.toLocaleString('ar-SA') || 'بدون نشاط';
+        
+        document.getElementById('user-modal').classList.add('active');
+    }
+
+    function closeUserModal() {
+        document.getElementById('user-modal').classList.remove('active');
+    }
+
+    // إغلاق Modal عند الضغط على Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeUserModal();
+    });
+
+    // إغلاق Modal عند الضغط خارجه
+    document.getElementById('user-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'user-modal') closeUserModal();
+    });
+</script>
+{% endblock %}

@@ -29,10 +29,16 @@ init_firebase()
 from routes.api import api_bp
 from routes.auth import auth_bp
 from routes.payment import payment_bp
+from routes.purchases import purchases_bp
+from routes.categories import categories_bp
+from routes.admin import admin_bp
 
 app.register_blueprint(api_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(payment_bp)
+app.register_blueprint(purchases_bp)
+app.register_blueprint(categories_bp)
+app.register_blueprint(admin_bp)
 
 # ===================== المسارات الأساسية =====================
 
@@ -90,6 +96,11 @@ def orders():
 def wallet():
     """صفحة المحفظة"""
     return render_template('wallet.html')
+
+@app.route('/my_purchases')
+def my_purchases():
+    """صفحة مشترياتي"""
+    return render_template('my_purchases.html')
 
 @app.route('/admin')
 def admin_dashboard():

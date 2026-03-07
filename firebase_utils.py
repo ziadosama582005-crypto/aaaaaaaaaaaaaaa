@@ -139,21 +139,25 @@ def deduct_balance(user_id, amount):
 
 # ===================== دوال المنتجات =====================
 
-def create_product(name, category_id, price, description='', image_url=''):
+def create_product(name, category_id, price, description='', image_url='', delivery_type='instant', sold=False):
     """إنشاء منتج جديد"""
     if not FIREBASE_AVAILABLE or not db:
         return None
     
     try:
         product_data = {
-            'name': name,
+            'item_name': name,
             'category_id': category_id,
             'price': float(price),
             'description': description,
             'image_url': image_url,
             'created_at': datetime.now(),
             'is_active': True,
-            'stock': 0
+            'stock': 0,
+            'delivery_type': delivery_type,  # instant أو manual
+            'sold': sold,
+            'seller_id': None,
+            'sales_count': 0
         }
         
         doc_ref = db.collection('products').document()
@@ -365,6 +369,58 @@ def get_user_orders(user_id, limit=50):
         return orders
     except Exception as e:
         logger.error(f"❌ خطأ في جلب الطلبات: {e}")
+        return []
+
+# ===================== دوال المشتريات =====================
+
+def create_purchase(user_id, product_id, item_name, price, category, delivery_type='instant', buyer_details=''):
+    """إنشاء مشتراة جديدة"""
+    if not FIREBASE_AVAILABLE or not db:
+        return None
+    
+    try:
+        purchase = {
+            'user_id': str(user_id),
+            'product_id': product_id,
+            'item_name': item_name,
+            'price': float(price),
+            'category': category,
+            'delivery_type': delivery_type,
+            'buyer_details': buyer_details,
+            'purchased_at': datetime.now(),
+            'status': 'completed',
+            'hidden_data': ''
+        }
+        
+        doc_ref = db.collection('purchases').document()
+        doc_ref.set(purchase)
+        
+        logger.info(f"✅ تم إنشاء مشتراة: {item_name}")
+        return doc_ref.id
+    except Exception as e:
+        logger.error(f"❌ خطأ في إنشاء المشتراة: {e}")
+        return None
+
+def get_user_purchases(user_id, limit=50):
+    """جلب مشتريات المستخدم"""
+    if not FIREBASE_AVAILABLE or not db:
+        return []
+    
+    try:
+        docs = db.collection('purchases')\
+            .where('user_id', '==', str(user_id))\
+            .order_by('purchased_at', direction=firestore.Query.DESCENDING)\
+            .limit(limit)\
+            .stream()
+        
+        purchases = []
+        for doc in docs:
+            purchase = doc.to_dict()
+            purchase['id'] = doc.id
+            purchases.append(purchase)
+        return purchases
+    except Exception as e:
+        logger.error(f"❌ خطأ في جلب المشتريات: {e}")
         return []
 
 print("✅ firebase_utils تم تحميله")

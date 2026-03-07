@@ -238,4 +238,44 @@ def get_categories_api():
             'message': str(e)
         }), 500
 
+# ===================== المشتريات =====================
+
+@api_bp.route('/get-user-purchases', methods=['GET'])
+def get_user_purchases_api():
+    """جلب مشتريات المستخدم"""
+    try:
+        user_id = session.get('user_id')
+        
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'purchases': []
+            })
+        
+        purchases = []
+        
+        if FIREBASE_AVAILABLE and db:
+            from firebase_utils import db
+            docs = db.collection('purchases')\
+                .where('user_id', '==', str(user_id))\
+                .order_by('purchased_at', direction='DESCENDING')\
+                .stream()
+            
+            for doc in docs:
+                purchase = doc.to_dict()
+                purchase['id'] = doc.id
+                purchases.append(purchase)
+        
+        return jsonify({
+            'success': True,
+            'purchases': purchases
+        })
+    except Exception as e:
+        logger.error(f"❌ خطأ: {e}")
+        return jsonify({
+            'success': False,
+            'purchases': [],
+            'message': str(e)
+        })
+
 print("✅ api routes تم تحميله")
