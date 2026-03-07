@@ -66,6 +66,11 @@ def product(product_id):
     
     return render_template('product.html', product=product)
 
+@app.route('/shop')
+def shop():
+    """صفحة المتجر"""
+    return render_template('shop.html')
+
 @app.route('/cart')
 def cart():
     """صفحة السلة"""
