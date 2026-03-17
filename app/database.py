@@ -22,28 +22,42 @@ def init_firebase():
         db = firestore.client()
         return
 
-    # الطريقة 1: Base64 من متغير البيئة (Render)
+    # الطريقة 1: من متغير البيئة (Render) - يدعم JSON مباشر أو Base64
     if settings.FIREBASE_CONFIG_BASE64:
-        try:
-            import re
-            # إزالة جميع المسافات والأسطر الجديدة
-            b64 = re.sub(r'\s+', '', settings.FIREBASE_CONFIG_BASE64)
-            # إصلاح padding تلقائياً
-            missing_padding = len(b64) % 4
-            if missing_padding:
-                b64 += "=" * (4 - missing_padding)
-            print(f"🔍 Base64 length: {len(b64)}")
-            decoded = base64.b64decode(b64)
-            config_dict = json.loads(decoded)
-            cred = credentials.Certificate(config_dict)
-            firebase_admin.initialize_app(cred)
-            db = firestore.client()
-            print("✅ Firebase متصل (Base64)")
-            return
-        except Exception as e:
-            print(f"⚠️ فشل Base64: {e}")
-            print(f"⚠️ أول 50 حرف: {settings.FIREBASE_CONFIG_BASE64[:50]}...")
-            print(f"⚠️ آخر 50 حرف: ...{settings.FIREBASE_CONFIG_BASE64[-50:]}")
+        raw = settings.FIREBASE_CONFIG_BASE64.strip()
+        config_dict = None
+
+        # محاولة 1: ربما وضع JSON مباشر بدون base64
+        if raw.startswith("{"):
+            try:
+                config_dict = json.loads(raw)
+                print("✅ تم قراءة Firebase config كـ JSON مباشر")
+            except json.JSONDecodeError:
+                pass
+
+        # محاولة 2: Base64
+        if config_dict is None:
+            try:
+                import re
+                b64 = re.sub(r'\s+', '', raw)
+                missing_padding = len(b64) % 4
+                if missing_padding:
+                    b64 += "=" * (4 - missing_padding)
+                decoded = base64.b64decode(b64)
+                config_dict = json.loads(decoded)
+                print("✅ تم قراءة Firebase config كـ Base64")
+            except Exception as e:
+                print(f"⚠️ فشل Base64: {e}")
+
+        if config_dict:
+            try:
+                cred = credentials.Certificate(config_dict)
+                firebase_admin.initialize_app(cred)
+                db = firestore.client()
+                print("✅ Firebase متصل")
+                return
+            except Exception as e:
+                print(f"⚠️ فشل اتصال Firebase: {e}")
 
     # الطريقة 2: ملف محلي (تطوير)
     if os.path.exists(settings.FIREBASE_CONFIG_PATH):
