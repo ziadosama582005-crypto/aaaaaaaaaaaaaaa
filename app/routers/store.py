@@ -39,7 +39,7 @@ def send_verification_code(body: StoreLoginRequest):
 
     # التأكد من أن العميل مسجل عند هذا التاجر
     customers = CustomerService.list_by_merchant(db, body.merchant_id)
-    customer = next((c for c in customers if c.get("email", "").lower() == body.email.lower()), None)
+    customer = next((c for c in customers if (c.get("email") or "").lower() == body.email.lower()), None)
     if not customer:
         raise HTTPException(status_code=404, detail="لا يوجد حساب بهذا البريد عند هذا التاجر")
 
@@ -78,7 +78,7 @@ def verify_code(body: StoreVerifyRequest):
 
     # جلب بيانات العميل
     customers = CustomerService.list_by_merchant(db, body.merchant_id)
-    customer = next((c for c in customers if c.get("email", "").lower() == body.email.lower()), None)
+    customer = next((c for c in customers if (c.get("email") or "").lower() == body.email.lower()), None)
     if not customer:
         raise HTTPException(status_code=404, detail="العميل غير موجود")
 
