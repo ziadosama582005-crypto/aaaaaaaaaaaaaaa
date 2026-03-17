@@ -14,7 +14,7 @@ from app.models import (
     RedemptionService, VerificationCodeService, PointsService,
 )
 from app.schemas import StoreLoginRequest, StoreVerifyRequest, StoreRedeemRequest
-from app.email_service import send_verification_email
+from app.email_service import send_verification_email, send_redemption_email
 
 router = APIRouter(prefix="/api/store", tags=["Store"])
 
@@ -184,6 +184,13 @@ def redeem_product(body: StoreRedeemRequest, customer_id: str = Query(...), merc
         product_name=product["name"],
         points_spent=product["points_cost"],
     )
+
+    # إرسال إشعار بالإيميل للعميل
+    customer_email = customer.get("email")
+    if customer_email:
+        merchant_data = MerchantService.get_by_id(db, merchant_id)
+        store_name = merchant_data.get("store_name", "المتجر") if merchant_data else "المتجر"
+        send_redemption_email(customer_email, store_name, product["name"], product["points_cost"], new_balance)
 
     return {
         "detail": "تم الاستبدال بنجاح!",

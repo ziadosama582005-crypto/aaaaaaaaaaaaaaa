@@ -6,11 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import get_db
 from app.dependencies import require_active_merchant
-from app.models import ProductService, RedemptionService, CustomerService
+from app.models import ProductService, RedemptionService, CustomerService, MerchantService
 from app.schemas import (
     ProductCreateRequest, ProductUpdateRequest, ProductOut,
     RedemptionOut, RedemptionActionRequest,
 )
+from app.email_service import send_redemption_rejected_email
 
 router = APIRouter(prefix="/api/products", tags=["Products"])
 
@@ -109,6 +110,17 @@ def update_redemption(
         if customer:
             new_balance = customer.get("points_balance", 0) + redemption["points_spent"]
             CustomerService.update_balance(db, redemption["customer_id"], new_balance)
+
+            # إرسال إشعار بالإيميل للعميل
+            customer_email = customer.get("email")
+            if customer_email:
+                merchant_data = MerchantService.get_by_id(db, merchant["id"])
+                store_name = merchant_data.get("store_name", "المتجر") if merchant_data else "المتجر"
+                send_redemption_rejected_email(
+                    customer_email, store_name,
+                    redemption.get("product_name", "منتج"),
+                    redemption["points_spent"], new_balance,
+                )
 
     status_map = {"approve": "approved", "reject": "rejected", "delivered": "delivered"}
     RedemptionService.update_status(db, redemption_id, status_map[body.action])

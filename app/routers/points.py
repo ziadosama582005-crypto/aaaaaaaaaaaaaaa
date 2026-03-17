@@ -6,8 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.database import get_db
 from app.dependencies import require_active_merchant
-from app.models import CustomerService, PointsService
+from app.models import CustomerService, PointsService, MerchantService
 from app.schemas import PointsRequest, PointsTransactionOut
+from app.email_service import send_points_added_email, send_points_deducted_email
 
 router = APIRouter(prefix="/api/points", tags=["Points"])
 
@@ -49,6 +50,17 @@ def manage_points(
         balance_after=new_balance,
         note=body.note,
     )
+
+    # إرسال إشعار بالإيميل للعميل
+    customer_email = customer.get("email")
+    if customer_email:
+        merchant_data = MerchantService.get_by_id(db, merchant["id"])
+        store_name = merchant_data.get("store_name", "المتجر") if merchant_data else "المتجر"
+        if body.action == "add":
+            send_points_added_email(customer_email, store_name, body.amount, new_balance, body.note)
+        else:
+            send_points_deducted_email(customer_email, store_name, body.amount, new_balance, body.note)
+
     return transaction
 
 
