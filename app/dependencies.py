@@ -4,19 +4,17 @@ Dependencies - استخراج المستخدم الحالي والتحقق من 
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.auth import decode_access_token
-from app.models import User, UserRole, MerchantProfile, MerchantStatus
+from app.models import UserService, MerchantService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db),
-) -> User:
+) -> dict:
     """استخراج المستخدم من JWT - يُرمى 401 إذا كان التوكن غير صالح"""
     payload = decode_access_token(token)
     if payload is None:
@@ -30,33 +28,30 @@ def get_current_user(
     if user_id is None:
         raise HTTPException(status_code=401, detail="رمز دخول غير صالح")
 
-    user = db.query(User).filter(User.id == user_id).first()
-    if user is None or not user.is_active:
+    db = get_db()
+    user = UserService.get_by_id(db, user_id)
+    if user is None or not user.get("is_active", False):
         raise HTTPException(status_code=401, detail="المستخدم غير موجود أو معطل")
     return user
 
 
-def require_admin(user: User = Depends(get_current_user)) -> User:
+def require_admin(user: dict = Depends(get_current_user)) -> dict:
     """يسمح فقط بمرور المدير (Super Admin)"""
-    if user.role != UserRole.ADMIN:
+    if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="صلاحيات المدير مطلوبة")
     return user
 
 
 def require_active_merchant(
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> MerchantProfile:
+    user: dict = Depends(get_current_user),
+) -> dict:
     """يسمح فقط بمرور تاجر مفعّل - يُرجع بيانات التاجر"""
-    if user.role != UserRole.MERCHANT:
+    if user.get("role") != "merchant":
         raise HTTPException(status_code=403, detail="صلاحيات التاجر مطلوبة")
 
-    profile = (
-        db.query(MerchantProfile)
-        .filter(MerchantProfile.user_id == user.id)
-        .first()
-    )
-    if profile is None or profile.status != MerchantStatus.ACTIVE:
+    db = get_db()
+    profile = MerchantService.get_by_user_id(db, user["id"])
+    if profile is None or profile.get("status") != "active":
         raise HTTPException(
             status_code=403,
             detail="حساب التاجر غير مفعّل بعد أو معلّق",

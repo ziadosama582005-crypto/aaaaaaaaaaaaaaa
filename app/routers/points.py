@@ -3,11 +3,10 @@
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import require_active_merchant
-from app.models import MerchantProfile, Customer, PointsTransaction, PointsAction
+from app.models import CustomerService, PointsService
 from app.schemas import PointsRequest, PointsTransactionOut
 
 router = APIRouter(prefix="/api/points", tags=["Points"])
@@ -16,45 +15,40 @@ router = APIRouter(prefix="/api/points", tags=["Points"])
 @router.post("/", response_model=PointsTransactionOut, status_code=201)
 def manage_points(
     body: PointsRequest,
-    merchant: MerchantProfile = Depends(require_active_merchant),
-    db: Session = Depends(get_db),
+    merchant: dict = Depends(require_active_merchant),
 ):
     """إضافة أو خصم نقاط لعميل - يجب أن يكون العميل تابعاً للتاجر"""
+    db = get_db()
 
-    # التأكد أن العميل تابع لهذا التاجر
-    customer = (
-        db.query(Customer)
-        .filter(Customer.id == body.customer_id, Customer.merchant_id == merchant.id)
-        .first()
-    )
-    if not customer:
+    customer = CustomerService.get_by_id(db, body.customer_id)
+    if not customer or customer.get("merchant_id") != merchant["id"]:
         raise HTTPException(status_code=404, detail="العميل غير موجود أو لا يتبع متجرك")
 
-    action = PointsAction(body.action)
+    balance = customer.get("points_balance", 0.0)
 
-    # التحقق من كفاية الرصيد عند الخصم
-    if action == PointsAction.DEDUCT:
-        if customer.points_balance < body.amount:
+    if body.action == "deduct":
+        if balance < body.amount:
             raise HTTPException(
                 status_code=400,
-                detail=f"رصيد العميل غير كافٍ. الرصيد الحالي: {customer.points_balance}",
+                detail=f"رصيد العميل غير كافٍ. الرصيد الحالي: {balance}",
             )
-        customer.points_balance -= body.amount
+        new_balance = balance - body.amount
     else:
-        customer.points_balance += body.amount
+        new_balance = balance + body.amount
+
+    # تحديث الرصيد
+    CustomerService.update_balance(db, body.customer_id, new_balance)
 
     # تسجيل الحركة
-    transaction = PointsTransaction(
-        customer_id=customer.id,
-        merchant_id=merchant.id,
-        action=action,
+    transaction = PointsService.create(
+        db,
+        customer_id=body.customer_id,
+        merchant_id=merchant["id"],
+        action=body.action,
         amount=body.amount,
-        balance_after=customer.points_balance,
+        balance_after=new_balance,
         note=body.note,
     )
-    db.add(transaction)
-    db.commit()
-    db.refresh(transaction)
     return transaction
 
 
@@ -62,47 +56,32 @@ def manage_points(
 def get_points_history(
     customer_id: str,
     limit: int = Query(50, ge=1, le=200),
-    merchant: MerchantProfile = Depends(require_active_merchant),
-    db: Session = Depends(get_db),
+    merchant: dict = Depends(require_active_merchant),
 ):
     """عرض سجل حركات النقاط لعميل محدد"""
+    db = get_db()
 
-    # التأكد أن العميل تابع للتاجر
-    customer = (
-        db.query(Customer)
-        .filter(Customer.id == customer_id, Customer.merchant_id == merchant.id)
-        .first()
-    )
-    if not customer:
+    customer = CustomerService.get_by_id(db, customer_id)
+    if not customer or customer.get("merchant_id") != merchant["id"]:
         raise HTTPException(status_code=404, detail="العميل غير موجود أو لا يتبع متجرك")
 
-    history = (
-        db.query(PointsTransaction)
-        .filter(PointsTransaction.customer_id == customer_id)
-        .order_by(PointsTransaction.created_at.desc())
-        .limit(limit)
-        .all()
-    )
-    return history
+    return PointsService.get_history(db, customer_id, limit)
 
 
 @router.get("/balance/{customer_id}")
 def get_customer_balance(
     customer_id: str,
-    merchant: MerchantProfile = Depends(require_active_merchant),
-    db: Session = Depends(get_db),
+    merchant: dict = Depends(require_active_merchant),
 ):
     """عرض رصيد النقاط الحالي لعميل"""
-    customer = (
-        db.query(Customer)
-        .filter(Customer.id == customer_id, Customer.merchant_id == merchant.id)
-        .first()
-    )
-    if not customer:
+    db = get_db()
+
+    customer = CustomerService.get_by_id(db, customer_id)
+    if not customer or customer.get("merchant_id") != merchant["id"]:
         raise HTTPException(status_code=404, detail="العميل غير موجود")
 
     return {
-        "customer_id": customer.id,
-        "name": customer.name,
-        "points_balance": customer.points_balance,
+        "customer_id": customer["id"],
+        "name": customer["name"],
+        "points_balance": customer.get("points_balance", 0.0),
     }

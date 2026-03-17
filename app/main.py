@@ -7,8 +7,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.database import init_db, SessionLocal
-from app.models import User, UserRole
+from app.database import init_firebase, get_db
+from app.models import UserService
 from app.auth import hash_password
 from app.routers import admin, merchants, customers, points
 
@@ -17,27 +17,22 @@ settings = get_settings()
 
 def seed_admin():
     """إنشاء حساب المدير الافتراضي إذا لم يكن موجوداً"""
-    db = SessionLocal()
-    try:
-        exists = db.query(User).filter(User.email == settings.ADMIN_EMAIL).first()
-        if not exists:
-            admin_user = User(
-                email=settings.ADMIN_EMAIL,
-                hashed_password=hash_password(settings.ADMIN_PASSWORD),
-                role=UserRole.ADMIN,
-                is_active=True,
-            )
-            db.add(admin_user)
-            db.commit()
-            print(f"✅ تم إنشاء حساب المدير: {settings.ADMIN_EMAIL}")
-    finally:
-        db.close()
+    db = get_db()
+    existing = UserService.get_by_email(db, settings.ADMIN_EMAIL)
+    if not existing:
+        UserService.create(
+            db,
+            email=settings.ADMIN_EMAIL,
+            hashed_password=hash_password(settings.ADMIN_PASSWORD),
+            role="admin",
+        )
+        print(f"✅ تم إنشاء حساب المدير: {settings.ADMIN_EMAIL}")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # عند بدء التشغيل
-    init_db()
+    init_firebase()
     seed_admin()
     print("🚀 النظام جاهز للعمل")
     yield

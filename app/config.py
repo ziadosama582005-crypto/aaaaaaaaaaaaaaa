@@ -7,8 +7,9 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    # --- قاعدة البيانات ---
-    DATABASE_URL: str = "sqlite:///./loyalty.db"
+    # --- Firebase (Base64 لـ Render) ---
+    FIREBASE_CONFIG_BASE64: str = ""
+    FIREBASE_CONFIG_PATH: str = "serviceAccountKey.json"
 
     # --- JWT ---
     SECRET_KEY: str = "change-me-in-production-use-a-strong-random-key"

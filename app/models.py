@@ -1,131 +1,245 @@
 """
-نماذج قاعدة البيانات - العلاقات بين المدير والتجار والعملاء والنقاط
+خدمة Firestore - عمليات CRUD على المجموعات
+Collections: users, merchants, customers, points_transactions
 """
 
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import (
-    Column, String, Integer, Float, Boolean, DateTime,
-    ForeignKey, Enum as SAEnum, Text
-)
-from sqlalchemy.orm import relationship
-import enum
-
-from app.database import Base
 
 
-# ──────────────────────────── Enums ────────────────────────────
-
-class UserRole(str, enum.Enum):
-    ADMIN = "admin"
-    MERCHANT = "merchant"
-
-
-class MerchantStatus(str, enum.Enum):
-    PENDING = "pending"
-    ACTIVE = "active"
-    REJECTED = "rejected"
-    SUSPENDED = "suspended"
-
-
-class PointsAction(str, enum.Enum):
-    ADD = "add"
-    DEDUCT = "deduct"
-
-
-# ──────────────────────────── Helper ────────────────────────────
-
-def generate_uuid() -> str:
+def generate_id() -> str:
     return str(uuid.uuid4())
 
 
-def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+def utcnow_str() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
-# ──────────────────────────── Models ────────────────────────────
+# ═══════════════════════ Users ═══════════════════════
 
-class User(Base):
-    """
-    جدول المستخدمين الموحّد - يشمل المدير والتجار
-    التمييز عبر حقل role
-    """
-    __tablename__ = "users"
+class UserService:
+    COLLECTION = "users"
 
-    id = Column(String, primary_key=True, default=generate_uuid)
-    email = Column(String, unique=True, nullable=False, index=True)
-    hashed_password = Column(String, nullable=False)
-    role = Column(SAEnum(UserRole), nullable=False, default=UserRole.MERCHANT)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=utcnow)
+    @staticmethod
+    def create(db, *, email: str, hashed_password: str, role: str, is_active: bool = True) -> dict:
+        uid = generate_id()
+        data = {
+            "email": email,
+            "hashed_password": hashed_password,
+            "role": role,
+            "is_active": is_active,
+            "created_at": utcnow_str(),
+        }
+        db.collection(UserService.COLLECTION).document(uid).set(data)
+        data["id"] = uid
+        return data
 
-    # علاقة واحد-لواحد مع بيانات التاجر
-    merchant_profile = relationship(
-        "MerchantProfile", back_populates="user", uselist=False
-    )
+    @staticmethod
+    def get_by_id(db, user_id: str) -> dict | None:
+        doc = db.collection(UserService.COLLECTION).document(user_id).get()
+        if doc.exists:
+            d = doc.to_dict()
+            d["id"] = doc.id
+            return d
+        return None
 
-
-class MerchantProfile(Base):
-    """
-    بيانات التاجر الإضافية - اسم المتجر، العنوان، حالة الموافقة
-    """
-    __tablename__ = "merchant_profiles"
-
-    id = Column(String, primary_key=True, default=generate_uuid)
-    user_id = Column(String, ForeignKey("users.id"), unique=True, nullable=False)
-    store_name = Column(String, nullable=False)
-    address = Column(String, nullable=True)
-    phone = Column(String, nullable=True)
-    status = Column(
-        SAEnum(MerchantStatus), default=MerchantStatus.PENDING, nullable=False
-    )
-    approved_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=utcnow)
-
-    # العلاقات
-    user = relationship("User", back_populates="merchant_profile")
-    customers = relationship("Customer", back_populates="merchant", cascade="all, delete-orphan")
-
-
-class Customer(Base):
-    """
-    عميل تابع لتاجر معيّن - كل تاجر يرى عملائه فقط
-    """
-    __tablename__ = "customers"
-
-    id = Column(String, primary_key=True, default=generate_uuid)
-    merchant_id = Column(
-        String, ForeignKey("merchant_profiles.id"), nullable=False, index=True
-    )
-    name = Column(String, nullable=False)
-    email = Column(String, nullable=True)
-    phone = Column(String, nullable=True, index=True)
-    points_balance = Column(Float, default=0.0, nullable=False)
-    created_at = Column(DateTime, default=utcnow)
-
-    # العلاقات
-    merchant = relationship("MerchantProfile", back_populates="customers")
-    points_history = relationship(
-        "PointsTransaction", back_populates="customer", cascade="all, delete-orphan"
-    )
+    @staticmethod
+    def get_by_email(db, email: str) -> dict | None:
+        docs = (
+            db.collection(UserService.COLLECTION)
+            .where("email", "==", email)
+            .limit(1)
+            .stream()
+        )
+        for doc in docs:
+            d = doc.to_dict()
+            d["id"] = doc.id
+            return d
+        return None
 
 
-class PointsTransaction(Base):
-    """
-    سجل حركات النقاط - كل عملية إضافة أو خصم
-    """
-    __tablename__ = "points_transactions"
+# ═══════════════════════ Merchants ═══════════════════════
 
-    id = Column(String, primary_key=True, default=generate_uuid)
-    customer_id = Column(
-        String, ForeignKey("customers.id"), nullable=False, index=True
-    )
-    merchant_id = Column(String, nullable=False, index=True)
-    action = Column(SAEnum(PointsAction), nullable=False)
-    amount = Column(Float, nullable=False)
-    balance_after = Column(Float, nullable=False)
-    note = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=utcnow)
+class MerchantService:
+    COLLECTION = "merchants"
 
-    # العلاقة
-    customer = relationship("Customer", back_populates="points_history")
+    @staticmethod
+    def create(db, *, user_id: str, store_name: str, address: str = None,
+               phone: str = None, email: str = "") -> dict:
+        mid = generate_id()
+        data = {
+            "user_id": user_id,
+            "store_name": store_name,
+            "address": address,
+            "phone": phone,
+            "email": email,
+            "status": "pending",
+            "approved_at": None,
+            "created_at": utcnow_str(),
+        }
+        db.collection(MerchantService.COLLECTION).document(mid).set(data)
+        data["id"] = mid
+        return data
+
+    @staticmethod
+    def get_by_id(db, merchant_id: str) -> dict | None:
+        doc = db.collection(MerchantService.COLLECTION).document(merchant_id).get()
+        if doc.exists:
+            d = doc.to_dict()
+            d["id"] = doc.id
+            return d
+        return None
+
+    @staticmethod
+    def get_by_user_id(db, user_id: str) -> dict | None:
+        docs = (
+            db.collection(MerchantService.COLLECTION)
+            .where("user_id", "==", user_id)
+            .limit(1)
+            .stream()
+        )
+        for doc in docs:
+            d = doc.to_dict()
+            d["id"] = doc.id
+            return d
+        return None
+
+    @staticmethod
+    def list_all(db, status: str = None) -> list[dict]:
+        query = db.collection(MerchantService.COLLECTION)
+        if status:
+            query = query.where("status", "==", status)
+        docs = query.order_by("created_at", direction="DESCENDING").stream()
+        result = []
+        for doc in docs:
+            d = doc.to_dict()
+            d["id"] = doc.id
+            result.append(d)
+        return result
+
+    @staticmethod
+    def update_status(db, merchant_id: str, status: str, approved_at: str = None):
+        update = {"status": status}
+        if approved_at:
+            update["approved_at"] = approved_at
+        db.collection(MerchantService.COLLECTION).document(merchant_id).update(update)
+
+
+# ═══════════════════════ Customers ═══════════════════════
+
+class CustomerService:
+    COLLECTION = "customers"
+
+    @staticmethod
+    def create(db, *, merchant_id: str, name: str,
+               email: str = None, phone: str = None) -> dict:
+        cid = generate_id()
+        data = {
+            "merchant_id": merchant_id,
+            "name": name,
+            "email": email,
+            "phone": phone,
+            "points_balance": 0.0,
+            "created_at": utcnow_str(),
+        }
+        db.collection(CustomerService.COLLECTION).document(cid).set(data)
+        data["id"] = cid
+        return data
+
+    @staticmethod
+    def get_by_id(db, customer_id: str) -> dict | None:
+        doc = db.collection(CustomerService.COLLECTION).document(customer_id).get()
+        if doc.exists:
+            d = doc.to_dict()
+            d["id"] = doc.id
+            return d
+        return None
+
+    @staticmethod
+    def list_by_merchant(db, merchant_id: str) -> list[dict]:
+        docs = (
+            db.collection(CustomerService.COLLECTION)
+            .where("merchant_id", "==", merchant_id)
+            .order_by("created_at", direction="DESCENDING")
+            .stream()
+        )
+        return [{"id": doc.id, **doc.to_dict()} for doc in docs]
+
+    @staticmethod
+    def find_duplicate(db, merchant_id: str, email: str = None, phone: str = None) -> dict | None:
+        """البحث عن عميل مكرر بنفس الإيميل أو الجوال لنفس التاجر"""
+        col = db.collection(CustomerService.COLLECTION)
+        if email:
+            docs = col.where("merchant_id", "==", merchant_id).where("email", "==", email).limit(1).stream()
+            for doc in docs:
+                return {"id": doc.id, **doc.to_dict()}
+        if phone:
+            docs = col.where("merchant_id", "==", merchant_id).where("phone", "==", phone).limit(1).stream()
+            for doc in docs:
+                return {"id": doc.id, **doc.to_dict()}
+        return None
+
+    @staticmethod
+    def search(db, merchant_id: str, query: str) -> list[dict]:
+        """البحث في عملاء التاجر - بالاسم أو الإيميل أو الجوال"""
+        all_customers = CustomerService.list_by_merchant(db, merchant_id)
+        q = query.lower()
+        return [
+            c for c in all_customers
+            if q in (c.get("name") or "").lower()
+            or q in (c.get("email") or "").lower()
+            or q in (c.get("phone") or "")
+        ]
+
+    @staticmethod
+    def update_balance(db, customer_id: str, new_balance: float):
+        db.collection(CustomerService.COLLECTION).document(customer_id).update({
+            "points_balance": new_balance
+        })
+
+
+# ═══════════════════════ Points Transactions ═══════════════════════
+
+class PointsService:
+    COLLECTION = "points_transactions"
+
+    @staticmethod
+    def create(db, *, customer_id: str, merchant_id: str, action: str,
+               amount: float, balance_after: float, note: str = None) -> dict:
+        tid = generate_id()
+        data = {
+            "customer_id": customer_id,
+            "merchant_id": merchant_id,
+            "action": action,
+            "amount": amount,
+            "balance_after": balance_after,
+            "note": note,
+            "created_at": utcnow_str(),
+        }
+        db.collection(PointsService.COLLECTION).document(tid).set(data)
+        data["id"] = tid
+        return data
+
+    @staticmethod
+    def get_history(db, customer_id: str, limit: int = 50) -> list[dict]:
+        docs = (
+            db.collection(PointsService.COLLECTION)
+            .where("customer_id", "==", customer_id)
+            .order_by("created_at", direction="DESCENDING")
+            .limit(limit)
+            .stream()
+        )
+        return [{"id": doc.id, **doc.to_dict()} for doc in docs]
+
+    @staticmethod
+    def sum_added(db) -> float:
+        """مجموع النقاط المضافة (للإحصائيات)"""
+        docs = (
+            db.collection(PointsService.COLLECTION)
+            .where("action", "==", "add")
+            .stream()
+        )
+        total = 0.0
+        for doc in docs:
+            total += doc.to_dict().get("amount", 0.0)
+        return total
