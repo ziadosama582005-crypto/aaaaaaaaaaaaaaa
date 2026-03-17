@@ -6,6 +6,8 @@ Collections: users, merchants, customers, points_transactions, products, redempt
 import uuid
 from datetime import datetime, timezone
 
+from google.cloud.firestore_v1.base_query import FieldFilter
+
 
 def generate_id() -> str:
     return str(uuid.uuid4())
@@ -47,7 +49,7 @@ class UserService:
     def get_by_email(db, email: str) -> dict | None:
         docs = (
             db.collection(UserService.COLLECTION)
-            .where("email", "==", email)
+            .where(filter=FieldFilter("email", "==", email))
             .limit(1)
             .stream()
         )
@@ -94,7 +96,7 @@ class MerchantService:
     def get_by_user_id(db, user_id: str) -> dict | None:
         docs = (
             db.collection(MerchantService.COLLECTION)
-            .where("user_id", "==", user_id)
+            .where(filter=FieldFilter("user_id", "==", user_id))
             .limit(1)
             .stream()
         )
@@ -108,7 +110,7 @@ class MerchantService:
     def list_all(db, status: str = None) -> list[dict]:
         query = db.collection(MerchantService.COLLECTION)
         if status:
-            query = query.where("status", "==", status)
+            query = query.where(filter=FieldFilter("status", "==", status))
         docs = query.stream()
         result = []
         for doc in docs:
@@ -160,7 +162,7 @@ class CustomerService:
     def list_by_merchant(db, merchant_id: str) -> list[dict]:
         docs = (
             db.collection(CustomerService.COLLECTION)
-            .where("merchant_id", "==", merchant_id)
+            .where(filter=FieldFilter("merchant_id", "==", merchant_id))
             .stream()
         )
         result = [{"id": doc.id, **doc.to_dict()} for doc in docs]
@@ -172,11 +174,11 @@ class CustomerService:
         """البحث عن عميل مكرر بنفس الإيميل أو الجوال لنفس التاجر"""
         col = db.collection(CustomerService.COLLECTION)
         if email:
-            docs = col.where("merchant_id", "==", merchant_id).where("email", "==", email).limit(1).stream()
+            docs = col.where(filter=FieldFilter("merchant_id", "==", merchant_id)).where(filter=FieldFilter("email", "==", email)).limit(1).stream()
             for doc in docs:
                 return {"id": doc.id, **doc.to_dict()}
         if phone:
-            docs = col.where("merchant_id", "==", merchant_id).where("phone", "==", phone).limit(1).stream()
+            docs = col.where(filter=FieldFilter("merchant_id", "==", merchant_id)).where(filter=FieldFilter("phone", "==", phone)).limit(1).stream()
             for doc in docs:
                 return {"id": doc.id, **doc.to_dict()}
         return None
@@ -226,7 +228,7 @@ class PointsService:
     def get_history(db, customer_id: str, limit: int = 50) -> list[dict]:
         docs = (
             db.collection(PointsService.COLLECTION)
-            .where("customer_id", "==", customer_id)
+            .where(filter=FieldFilter("customer_id", "==", customer_id))
             .stream()
         )
         result = [{"id": doc.id, **doc.to_dict()} for doc in docs]
@@ -238,7 +240,7 @@ class PointsService:
         """مجموع النقاط المضافة (للإحصائيات)"""
         docs = (
             db.collection(PointsService.COLLECTION)
-            .where("action", "==", "add")
+            .where(filter=FieldFilter("action", "==", "add"))
             .stream()
         )
         total = 0.0
@@ -283,7 +285,7 @@ class ProductService:
 
     @staticmethod
     def list_by_merchant(db, merchant_id: str, active_only: bool = False) -> list[dict]:
-        query = db.collection(ProductService.COLLECTION).where("merchant_id", "==", merchant_id)
+        query = db.collection(ProductService.COLLECTION).where(filter=FieldFilter("merchant_id", "==", merchant_id))
         docs = query.stream()
         result = [{"id": doc.id, **doc.to_dict()} for doc in docs]
         if active_only:
@@ -324,14 +326,14 @@ class RedemptionService:
 
     @staticmethod
     def list_by_merchant(db, merchant_id: str) -> list[dict]:
-        docs = db.collection(RedemptionService.COLLECTION).where("merchant_id", "==", merchant_id).stream()
+        docs = db.collection(RedemptionService.COLLECTION).where(filter=FieldFilter("merchant_id", "==", merchant_id)).stream()
         result = [{"id": doc.id, **doc.to_dict()} for doc in docs]
         result.sort(key=lambda x: x.get("created_at", ""), reverse=True)
         return result
 
     @staticmethod
     def list_by_customer(db, customer_id: str) -> list[dict]:
-        docs = db.collection(RedemptionService.COLLECTION).where("customer_id", "==", customer_id).stream()
+        docs = db.collection(RedemptionService.COLLECTION).where(filter=FieldFilter("customer_id", "==", customer_id)).stream()
         result = [{"id": doc.id, **doc.to_dict()} for doc in docs]
         result.sort(key=lambda x: x.get("created_at", ""), reverse=True)
         return result
@@ -373,9 +375,9 @@ class VerificationCodeService:
     def get_latest(db, email: str, merchant_id: str) -> dict | None:
         docs = (
             db.collection(VerificationCodeService.COLLECTION)
-            .where("email", "==", email)
-            .where("merchant_id", "==", merchant_id)
-            .where("used", "==", False)
+            .where(filter=FieldFilter("email", "==", email))
+            .where(filter=FieldFilter("merchant_id", "==", merchant_id))
+            .where(filter=FieldFilter("used", "==", False))
             .stream()
         )
         result = [{"id": doc.id, **doc.to_dict()} for doc in docs]
