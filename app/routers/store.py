@@ -6,7 +6,7 @@ import random
 import string
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from app.database import get_db
 from app.models import (
@@ -15,7 +15,10 @@ from app.models import (
 )
 from app.schemas import StoreLoginRequest, StoreVerifyRequest, StoreRedeemRequest
 from app.email_service import send_verification_email, send_redemption_email
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
+limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/api/store", tags=["Store"])
 
 CODE_EXPIRY_MINUTES = 10
@@ -28,7 +31,8 @@ def _generate_code() -> str:
 # ──────────────────── تسجيل الدخول بكود ────────────────────
 
 @router.post("/send-code")
-def send_verification_code(body: StoreLoginRequest):
+@limiter.limit("5/minute")
+def send_verification_code(request: Request, body: StoreLoginRequest):
     """إرسال كود التحقق للعميل — يظهر الكود في الاستجابة (بدون إيميل حقيقي)"""
     db = get_db()
 
@@ -57,7 +61,8 @@ def send_verification_code(body: StoreLoginRequest):
 
 
 @router.post("/verify-code")
-def verify_code(body: StoreVerifyRequest):
+@limiter.limit("10/minute")
+def verify_code(request: Request, body: StoreVerifyRequest):
     """التحقق من الكود وإرجاع بيانات العميل"""
     db = get_db()
 
@@ -90,6 +95,7 @@ def verify_code(body: StoreVerifyRequest):
             "name": customer["name"],
             "email": customer.get("email"),
             "points_balance": customer.get("points_balance", 0),
+            "total_earned": customer.get("total_earned", 0),
         },
         "merchant": {
             "id": merchant["id"],
@@ -113,6 +119,10 @@ def get_store_info(merchant_id: str):
         "store_name": merchant["store_name"],
         "address": merchant.get("address"),
         "phone": merchant.get("phone"),
+        "store_description": merchant.get("store_description"),
+        "logo_url": merchant.get("logo_url"),
+        "theme_color": merchant.get("theme_color", "#ffa502"),
+        "tiers": merchant.get("tiers"),
     }
 
 

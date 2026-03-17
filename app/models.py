@@ -160,6 +160,10 @@ class MerchantService:
             update["approved_at"] = approved_at
         db.collection(MerchantService.COLLECTION).document(merchant_id).update(update)
 
+    @staticmethod
+    def update(db, merchant_id: str, **fields):
+        db.collection(MerchantService.COLLECTION).document(merchant_id).update(fields)
+
 
 # ═══════════════════════ Customers ═══════════════════════
 
@@ -232,6 +236,12 @@ class CustomerService:
     def update_balance(db, customer_id: str, new_balance: float):
         db.collection(CustomerService.COLLECTION).document(customer_id).update({
             "points_balance": new_balance
+        })
+
+    @staticmethod
+    def update_total_earned(db, customer_id: str, total_earned: float):
+        db.collection(CustomerService.COLLECTION).document(customer_id).update({
+            "total_earned": total_earned
         })
 
 

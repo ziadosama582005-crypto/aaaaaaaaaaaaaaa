@@ -405,6 +405,32 @@
             </div>
         </div>
 
+        <!-- إعدادات المتجر -->
+        <div class="section">
+            <h3 class="section-title">إعدادات المتجر</h3>
+            <div id="settingsAlert" class="alert"></div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>وصف المتجر</label>
+                    <input type="text" id="storeDesc" placeholder="وصف قصير يظهر للعملاء" maxlength="500">
+                </div>
+                <div class="form-group">
+                    <label>رابط الشعار (اختياري)</label>
+                    <input type="url" id="storeLogo" placeholder="https://...">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>لون المتجر</label>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <input type="color" id="themeColor" value="#ffa502" style="width:45px;height:38px;border:none;background:none;cursor:pointer">
+                        <span id="themeColorLabel" style="font-size:12px;color:#888">#ffa502</span>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="saveSettings()">حفظ الإعدادات</button>
+        </div>
+
         <!-- المنتجات -->
         <div class="section">
             <h3 class="section-title">
@@ -802,10 +828,43 @@
             window.location.href = '/static/login.html';
         }
 
+        // إعدادات المتجر
+        document.getElementById('themeColor').addEventListener('input', function() {
+            document.getElementById('themeColorLabel').textContent = this.value;
+        });
+        function loadSettings() {
+            if (user.merchant) {
+                document.getElementById('storeDesc').value = user.merchant.store_description || '';
+                document.getElementById('storeLogo').value = user.merchant.logo_url || '';
+                if (user.merchant.theme_color) {
+                    document.getElementById('themeColor').value = user.merchant.theme_color;
+                    document.getElementById('themeColorLabel').textContent = user.merchant.theme_color;
+                }
+            }
+        }
+        async function saveSettings() {
+            hideAlertEl('settingsAlert');
+            const data = {};
+            const desc = document.getElementById('storeDesc').value.trim();
+            const logo = document.getElementById('storeLogo').value.trim();
+            const color = document.getElementById('themeColor').value;
+            if (desc) data.store_description = desc;
+            if (logo) data.logo_url = logo;
+            if (color) data.theme_color = color;
+            if (Object.keys(data).length === 0) { showAlertEl('settingsAlert', 'لا توجد بيانات للتحديث', 'error'); return; }
+            try {
+                const res = await fetch(API + '/api/auth/settings', { method: 'PUT', headers, body: JSON.stringify(data) });
+                const d = await res.json();
+                if (!res.ok) throw new Error(d.detail || 'خطأ');
+                showToast('✅ تم حفظ الإعدادات', 'success');
+            } catch (err) { showAlertEl('settingsAlert', err.message, 'error'); }
+        }
+
         // تحميل البيانات
         loadCustomers();
         loadProducts();
         loadRedemptions();
+        loadSettings();
         setStoreLink();
 
         // رابط المتجر

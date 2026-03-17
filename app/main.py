@@ -3,10 +3,13 @@
 """
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse, Response
+from fastapi.responses import RedirectResponse, Response, HTMLResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.config import get_settings
 from app.database import init_firebase, get_db
@@ -47,12 +50,16 @@ async def lifespan(app: FastAPI):
     print("👋 تم إيقاف النظام")
 
 
+limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
+
 app = FastAPI(
     title=settings.APP_NAME,
     description="نظام نقاط ولاء متعدد التجار - Multi-Tenant Loyalty Points System",
     version="1.0.0",
     lifespan=lifespan,
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS - السماح بالطلبات من أي مصدر (يُعدّل في الإنتاج)
 app.add_middleware(
@@ -98,4 +105,38 @@ def resolve_short_code(short_code: str):
     merchant = MerchantService.get_by_short_code(db, short_code)
     if not merchant:
         raise HTTPException(status_code=404, detail="المتجر غير موجود")
+    return RedirectResponse(url=f"/static/store.html?merchant={merchant['id']}")
+
+
+@app.exception_handler(404)
+async def custom_404(request: Request, exc: HTTPException):
+    if request.url.path.startswith("/api/"):
+        return Response(
+            content='{"detail":"غير موجود"}',
+            status_code=404,
+            media_type="application/json",
+        )
+    return HTMLResponse(
+        content='''
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>404 - غير موجود</title>
+<style>
+body{margin:0;min-height:100vh;background:#0f0f1a;color:#e0e0e0;font-family:"Segoe UI",Tahoma,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center}
+.c{max-width:420px;padding:40px 20px}
+.code{font-size:120px;font-weight:bold;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
+h2{color:#aaa;margin:10px 0 20px;font-size:20px}
+p{color:#666;font-size:15px;line-height:1.6;margin-bottom:30px}
+a{display:inline-block;padding:12px 30px;background:linear-gradient(135deg,#3742fa,#70a1ff);color:#fff;border-radius:10px;text-decoration:none;font-size:15px}
+a:hover{opacity:.85}
+</style></head>
+<body><div class="c">
+<div class="code">404</div>
+<h2>الصفحة غير موجودة</h2>
+<p>عذراً، الصفحة التي تبحث عنها غير موجودة أو تم نقلها</p>
+<a href="/">العودة للرئيسية</a>
+</div></body></html>''',
+        status_code=404,
+    )
     return RedirectResponse(url=f"/static/store.html?merchant={merchant['id']}")

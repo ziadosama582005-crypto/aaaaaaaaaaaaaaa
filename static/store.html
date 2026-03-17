@@ -343,15 +343,26 @@
         let productsData = [];
 
         // جلب بيانات المتجر
+        let storeInfo = null;
         async function loadStoreInfo() {
             try {
                 const res = await fetch(API + '/api/store/merchant/' + merchantId);
                 if (!res.ok) throw new Error();
-                const info = await res.json();
-                document.getElementById('loginStoreTitle').textContent = '🎁 ' + info.store_name;
-                document.getElementById('loginStoreDesc').textContent = 'سجل دخولك لاستبدال نقاطك بمكافآت';
-                document.getElementById('navStoreName').textContent = info.store_name;
-                document.title = info.store_name + ' - متجر المكافآت';
+                storeInfo = await res.json();
+                document.getElementById('loginStoreTitle').textContent = 'متجر ' + storeInfo.store_name;
+                document.getElementById('loginStoreDesc').textContent = storeInfo.store_description || 'سجل دخولك لاستبدال نقاطك بمكافآت';
+                document.getElementById('navStoreName').textContent = storeInfo.store_name;
+                document.title = storeInfo.store_name + ' - متجر المكافآت';
+
+                // تطبيق لون المتجر المخصص
+                const tc = storeInfo.theme_color || '#ffa502';
+                document.documentElement.style.setProperty('--tc', tc);
+                document.querySelectorAll('.btn-primary').forEach(b => b.style.background = `linear-gradient(135deg, ${tc}, ${tc}dd)`);
+                document.querySelectorAll('.navbar h2').forEach(h => h.style.background = `linear-gradient(90deg, ${tc}, ${tc}cc)`);
+                // لوجو
+                if (storeInfo.logo_url) {
+                    document.getElementById('loginStoreTitle').innerHTML = '<img src="' + esc(storeInfo.logo_url) + '" style="height:40px;border-radius:8px;vertical-align:middle;margin-left:8px" onerror="this.style.display=\'none\'"> متجر ' + esc(storeInfo.store_name);
+                }
             } catch (e) {
                 document.body.innerHTML = '<div style="text-align:center;margin-top:100px;color:#e94560"><h2>المتجر غير موجود</h2><p>تأكد من الرابط</p></div>';
             }

@@ -2,19 +2,23 @@
 نقاط النهاية الخاصة بالتاجر - التسجيل وتسجيل الدخول والبيانات الشخصية
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.database import get_db
 from app.auth import hash_password, verify_password, create_access_token
 from app.models import UserService, MerchantService
-from app.schemas import MerchantRegisterRequest, LoginRequest, TokenResponse
-from app.dependencies import get_current_user
+from app.schemas import MerchantRegisterRequest, LoginRequest, TokenResponse, MerchantSettingsRequest
+from app.dependencies import get_current_user, require_active_merchant
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
+limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
 
 @router.post("/register", status_code=201)
-def register_merchant(body: MerchantRegisterRequest):
+@limiter.limit("5/minute")
+def register_merchant(request: Request, body: MerchantRegisterRequest):
     """تسجيل تاجر جديد - الحساب يكون بحالة (قيد الانتظار) حتى موافقة المدير"""
     db = get_db()
 
@@ -44,7 +48,8 @@ def register_merchant(body: MerchantRegisterRequest):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(body: LoginRequest):
+@limiter.limit("10/minute")
+def login(request: Request, body: LoginRequest):
     """تسجيل دخول (مدير أو تاجر) - يُرجع JWT Token"""
     db = get_db()
 
@@ -79,6 +84,24 @@ def get_my_profile(user: dict = Depends(get_current_user)):
                 "phone": profile.get("phone"),
                 "status": profile["status"],
                 "short_code": profile.get("short_code"),
+                "theme_color": profile.get("theme_color", "#ffa502"),
+                "store_description": profile.get("store_description"),
+                "logo_url": profile.get("logo_url"),
+                "tiers": profile.get("tiers"),
             }
 
     return data
+
+
+@router.put("/settings")
+def update_merchant_settings(
+    body: MerchantSettingsRequest,
+    merchant: dict = Depends(require_active_merchant),
+):
+    """تحديث إعدادات المتجر (الوصف، الشعار، اللون)"""
+    db = get_db()
+    updates = body.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="لا توجد بيانات للتحديث")
+    MerchantService.update(db, merchant["id"], **updates)
+    return {"detail": "تم تحديث الإعدادات"}

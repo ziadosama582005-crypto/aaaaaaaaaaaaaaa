@@ -40,6 +40,11 @@ def manage_points(
     # تحديث الرصيد
     CustomerService.update_balance(db, body.customer_id, new_balance)
 
+    # تحديث إجمالي النقاط المكتسبة
+    if body.action == "add":
+        total_earned = customer.get("total_earned", 0) + body.amount
+        CustomerService.update_total_earned(db, body.customer_id, total_earned)
+
     # تسجيل الحركة
     transaction = PointsService.create(
         db,

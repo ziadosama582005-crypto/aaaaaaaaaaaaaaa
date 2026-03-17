@@ -60,6 +60,27 @@ class MerchantWithEmail(MerchantOut):
     email: str  # من جدول users
 
 
+class MerchantSettingsRequest(BaseModel):
+    store_description: Optional[str] = Field(None, max_length=500)
+    logo_url: Optional[str] = None
+    theme_color: Optional[str] = Field(None, pattern="^#[0-9a-fA-F]{6}$")
+    tiers: Optional[list[dict]] = None
+
+    @field_validator('tiers')
+    @classmethod
+    def validate_tiers(cls, v):
+        if v is None:
+            return v
+        if len(v) > 10:
+            raise ValueError('الحد الأقصى 10 مستويات')
+        for t in v:
+            if 'name' not in t or 'min_points' not in t:
+                raise ValueError('كل مستوى يجب أن يحتوي على name و min_points')
+            if not isinstance(t['min_points'], (int, float)) or t['min_points'] < 0:
+                raise ValueError('min_points يجب أن يكون رقماً >= 0')
+        return v
+
+
 # ──────────────────────── Customer ────────────────────────
 
 class CustomerCreateRequest(BaseModel):
