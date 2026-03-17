@@ -466,27 +466,35 @@
                     return;
                 }
 
-                grid.innerHTML = list.map(p => {
-                    const canAfford = customer.points_balance >= p.points_cost;
-                    const isManual = p.product_type === 'manual';
-                    return `
-                    <div class="product-card">
-                        ${p.image_url ? '<img class="prod-img" src="' + esc(p.image_url) + '" alt="' + esc(p.name) + '" onerror="this.style.display=\'none\'">' : '<div class="prod-img" style="display:flex;align-items:center;justify-content:center;font-size:36px">' + (isManual ? '📝' : '🎁') + '</div>'}
-                        ${p.category ? '<span class="prod-cat">' + esc(p.category) + '</span>' : ''}
-                        ${isManual ? '<span class="prod-cat" style="background:rgba(255,165,2,0.2);color:#ffa502;right:auto;left:8px">يدوي</span>' : ''}
-                        <div class="prod-name">${esc(p.name)}</div>
-                        <div class="prod-desc">${esc(p.description || '')}</div>
-                        <div class="prod-footer">
-                            <div style="display:flex;justify-content:space-between;align-items:center">
-                                <div class="prod-price">${p.points_cost} <small>نقطة</small></div>
-                                <div class="prod-stock">${p.stock === -1 ? '✅ متوفر' : (p.stock > 0 ? '📦 ' + p.stock : '⛔ نفد')}</div>
+                // جلب التقييمات لكل منتج
+                Promise.all(list.map(p => fetch(API + '/api/store/product-rating/' + p.id).then(r => r.json()).catch(() => ({avg:0,count:0}))))
+                .then(ratingsArr => {
+                    grid.innerHTML = list.map((p, idx) => {
+                        const canAfford = customer.points_balance >= p.points_cost;
+                        const isManual = p.product_type === 'manual';
+                        const rating = ratingsArr[idx];
+                        let stars = '';
+                        for (let i = 1; i <= 5; i++) stars += `<span style='color:${i<=rating.avg?'#ffa502':'#555'};font-size:16px'>★</span>`;
+                        return `
+                        <div class="product-card">
+                            ${p.image_url ? '<img class="prod-img" src="' + esc(p.image_url) + '" alt="' + esc(p.name) + '" onerror="this.style.display=\'none\'">' : '<div class="prod-img" style="display:flex;align-items:center;justify-content:center;font-size:36px">' + (isManual ? '📝' : '🎁') + '</div>'}
+                            ${p.category ? '<span class="prod-cat">' + esc(p.category) + '</span>' : ''}
+                            ${isManual ? '<span class="prod-cat" style="background:rgba(255,165,2,0.2);color:#ffa502;right:auto;left:8px">يدوي</span>' : ''}
+                            <div class="prod-name">${esc(p.name)}</div>
+                            <div class="prod-desc">${esc(p.description || '')}</div>
+                            <div style="margin-bottom:6px">${stars} <span style="font-size:11px;color:#888">(${rating.count})</span></div>
+                            <div class="prod-footer">
+                                <div style="display:flex;justify-content:space-between;align-items:center">
+                                    <div class="prod-price">${p.points_cost} <small>نقطة</small></div>
+                                    <div class="prod-stock">${p.stock === -1 ? '✅ متوفر' : (p.stock > 0 ? '📦 ' + p.stock : '⛔ نفد')}</div>
+                                </div>
+                                <button class="btn btn-success btn-sm" ${canAfford && p.stock !== 0 ? '' : 'disabled'} onclick="redeemProduct('${p.id}','${esc(p.name)}',${p.points_cost})">
+                                    ${canAfford ? '🎁 استبدال' : '⚠️ رصيد غير كافٍ'}
+                                </button>
                             </div>
-                            <button class="btn btn-success btn-sm" ${canAfford && p.stock !== 0 ? '' : 'disabled'} onclick="redeemProduct('${p.id}','${esc(p.name)}',${p.points_cost})">
-                                ${canAfford ? '🎁 استبدال' : '⚠️ رصيد غير كافٍ'}
-                            </button>
-                        </div>
-                    </div>`;
-                }).join('');
+                        </div>`;
+                    }).join('');
+                });
             } catch (e) {
                 grid.innerHTML = '<p style="color:#e94560">خطأ في تحميل المنتجات</p>';
             }

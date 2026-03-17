@@ -1,3 +1,36 @@
+# ──────────────────── تقييم المنتجات ────────────────────
+from app.models import RatingService
+from fastapi import Body
+
+@router.post("/rate-product")
+def rate_product(
+    customer_id: str = Query(...),
+    merchant_id: str = Query(...),
+    product_id: str = Query(...),
+    rating: int = Body(..., embed=True),
+    comment: str = Body(None, embed=True),
+):
+    db = get_db()
+    # تحقق من العميل والمنتج
+    customer = CustomerService.get_by_id(db, customer_id)
+    if not customer or customer.get("merchant_id") != merchant_id:
+        raise HTTPException(status_code=404, detail="العميل غير موجود")
+    product = ProductService.get_by_id(db, product_id)
+    if not product or product.get("merchant_id") != merchant_id:
+        raise HTTPException(status_code=404, detail="المنتج غير موجود")
+    if not (1 <= rating <= 5):
+        raise HTTPException(status_code=400, detail="التقييم يجب أن يكون بين 1 و 5")
+    # تحقق من عدم تكرار التقييم لنفس المنتج من نفس العميل
+    ratings = RatingService.get_product_ratings(db, product_id)
+    if any(r["customer_id"] == customer_id for r in ratings):
+        raise HTTPException(status_code=400, detail="تم تقييم المنتج مسبقاً")
+    RatingService.add_rating(db, customer_id=customer_id, product_id=product_id, merchant_id=merchant_id, rating=rating, comment=comment)
+    return {"detail": "تم إضافة التقييم"}
+
+@router.get("/product-rating/{product_id}")
+def get_product_rating(product_id: str):
+    db = get_db()
+    return RatingService.get_avg_rating(db, product_id)
 """
 نقاط النهاية الخاصة بمتجر العميل - تسجيل دخول بالإيميل + استعراض المنتجات + استبدال
 """

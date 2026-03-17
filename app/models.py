@@ -73,7 +73,7 @@ class UserService:
     COLLECTION = "users"
 
     @staticmethod
-    def create(db, *, email: str, hashed_password: str, role: str, is_active: bool = True) -> dict:
+    def create(db, *, email: str, hashed_password: str, role: str, is_active: bool = True, merchant_id: str = None, staff_permissions: list = None) -> dict:
         uid = generate_id()
         data = {
             "email": email,
@@ -82,6 +82,9 @@ class UserService:
             "is_active": is_active,
             "created_at": utcnow_str(),
         }
+        if role == "staff":
+            data["merchant_id"] = merchant_id
+            data["staff_permissions"] = staff_permissions or []
         db.collection(UserService.COLLECTION).document(uid).set(data)
         data["id"] = uid
         return data
