@@ -1,8 +1,12 @@
-Flask==2.3.3
-Flask-Cors==4.0.0
-firebase-admin==6.2.0
-python-dotenv==1.0.0
-gunicorn==21.2.0
-requests==2.31.0
-Werkzeug==2.3.7
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+sqlalchemy==2.0.35
+pydantic[email]==2.9.0
+pydantic-settings==2.5.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-dotenv==1.0.1
+psycopg2-binary==2.9.9
+gunicorn==22.0.0
 
