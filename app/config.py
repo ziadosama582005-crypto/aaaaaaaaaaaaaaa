@@ -27,8 +27,9 @@ class Settings(BaseSettings):
     # --- SMTP (إرسال الإيميلات) ---
     SMTP_EMAIL: str = ""
     SMTP_PASSWORD: str = ""
-    SMTP_SERVER: str = "smtp.gmail.com"
-    SMTP_PORT: int = 587
+    SMTP_SERVER: str = "mail.privateemail.com"
+    SMTP_PORT: int = 465
+    SMTP_FROM_NAME: str = "TR Store"
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
