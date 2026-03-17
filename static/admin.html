@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة المدير - نظام نقاط الولاء</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: rgba(15,15,26,0.95);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        .navbar h2 {
+            font-size: 18px;
+            background: linear-gradient(90deg, #e94560, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .navbar .user-info { display: flex; align-items: center; gap: 15px; }
+        .navbar .user-info span { color: #888; font-size: 14px; }
+        .logout-btn {
+            padding: 7px 18px;
+            background: rgba(233,69,96,0.15);
+            border: 1px solid rgba(233,69,96,0.3);
+            border-radius: 8px;
+            color: #e94560;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .logout-btn:hover { background: rgba(233,69,96,0.25); }
+        .content { max-width: 1100px; margin: 0 auto; padding: 25px 20px; }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 22px;
+            text-align: center;
+        }
+        .stat-card .number {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stat-card .label { color: #888; font-size: 13px; }
+        .stat-card:nth-child(1) .number { color: #e94560; }
+        .stat-card:nth-child(2) .number { color: #2ed573; }
+        .stat-card:nth-child(3) .number { color: #ffa502; }
+        .stat-card:nth-child(4) .number { color: #70a1ff; }
+        .stat-card:nth-child(5) .number { color: #a29bfe; }
+
+        /* Section */
+        .section-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        /* Filter */
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+        }
+        .filter-btn {
+            padding: 7px 16px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .filter-btn.active, .filter-btn:hover {
+            background: #e94560;
+            color: #fff;
+            border-color: #e94560;
+        }
+
+        /* Table */
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        th {
+            background: rgba(255,255,255,0.05);
+            padding: 12px 14px;
+            text-align: right;
+            color: #888;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        td {
+            padding: 12px 14px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            white-space: nowrap;
+        }
+        tr:hover td { background: rgba(255,255,255,0.03); }
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge.pending { background: rgba(255,165,2,0.15); color: #ffa502; }
+        .badge.active { background: rgba(46,213,115,0.15); color: #2ed573; }
+        .badge.rejected { background: rgba(233,69,96,0.15); color: #e94560; }
+        .badge.suspended { background: rgba(128,128,128,0.15); color: #999; }
+        .action-btn {
+            padding: 5px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 4px;
+            transition: opacity 0.2s;
+        }
+        .action-btn:hover { opacity: 0.8; }
+        .action-btn.approve { background: #2ed573; color: #000; }
+        .action-btn.reject { background: #e94560; color: #fff; }
+        .action-btn.suspend { background: #808080; color: #fff; }
+        .empty { text-align: center; padding: 40px; color: #555; }
+        .loading { text-align: center; padding: 30px; color: #666; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h2>🛡️ لوحة تحكم المدير</h2>
+        <div class="user-info">
+            <span id="adminEmail"></span>
+            <button class="logout-btn" onclick="logout()">خروج</button>
+        </div>
+    </nav>
+
+    <div class="content">
+        <!-- الإحصائيات -->
+        <div class="stats" id="statsGrid">
+            <div class="stat-card"><div class="number" id="totalMerchants">-</div><div class="label">إجمالي التجار</div></div>
+            <div class="stat-card"><div class="number" id="activeMerchants">-</div><div class="label">تجار نشطين</div></div>
+            <div class="stat-card"><div class="number" id="pendingMerchants">-</div><div class="label">بانتظار الموافقة</div></div>
+            <div class="stat-card"><div class="number" id="totalCustomers">-</div><div class="label">إجمالي العملاء</div></div>
+            <div class="stat-card"><div class="number" id="totalPoints">-</div><div class="label">نقاط صادرة</div></div>
+        </div>
+
+        <!-- قائمة التجار -->
+        <h3 class="section-title">إدارة التجار</h3>
+        <div class="filter-bar">
+            <button class="filter-btn active" onclick="filterMerchants(null, this)">الكل</button>
+            <button class="filter-btn" onclick="filterMerchants('pending', this)">قيد الانتظار</button>
+            <button class="filter-btn" onclick="filterMerchants('active', this)">نشط</button>
+            <button class="filter-btn" onclick="filterMerchants('rejected', this)">مرفوض</button>
+            <button class="filter-btn" onclick="filterMerchants('suspended', this)">معلّق</button>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>اسم المتجر</th>
+                        <th>البريد</th>
+                        <th>الجوال</th>
+                        <th>الحالة</th>
+                        <th>تاريخ التسجيل</th>
+                        <th>إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="merchantsTable">
+                    <tr><td colspan="6" class="loading">جاري التحميل...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API = window.location.origin;
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/static/login.html';
+
+        const headers = {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        };
+
+        // عرض إيميل المدير
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (user.role !== 'admin') window.location.href = '/static/login.html';
+        document.getElementById('adminEmail').textContent = user.email || '';
+
+        // جلب الإحصائيات
+        async function loadStats() {
+            try {
+                const res = await fetch(API + '/api/admin/stats', { headers });
+                if (res.status === 401) return logout();
+                const d = await res.json();
+                document.getElementById('totalMerchants').textContent = d.total_merchants;
+                document.getElementById('activeMerchants').textContent = d.active_merchants;
+                document.getElementById('pendingMerchants').textContent = d.pending_merchants;
+                document.getElementById('totalCustomers').textContent = d.total_customers;
+                document.getElementById('totalPoints').textContent = d.total_points_issued.toLocaleString();
+            } catch (e) { console.error(e); }
+        }
+
+        // جلب التجار
+        async function loadMerchants(status) {
+            const tbody = document.getElementById('merchantsTable');
+            tbody.innerHTML = '<tr><td colspan="6" class="loading">جاري التحميل...</td></tr>';
+            try {
+                let url = API + '/api/admin/merchants';
+                if (status) url += '?status=' + status;
+                const res = await fetch(url, { headers });
+                if (res.status === 401) return logout();
+                const list = await res.json();
+
+                if (list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty">لا يوجد تجار</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = list.map(m => `
+                    <tr>
+                        <td><strong>${esc(m.store_name)}</strong></td>
+                        <td>${esc(m.email || '-')}</td>
+                        <td>${esc(m.phone || '-')}</td>
+                        <td><span class="badge ${m.status}">${statusAr(m.status)}</span></td>
+                        <td>${formatDate(m.created_at)}</td>
+                        <td>${actionButtons(m)}</td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty">خطأ في التحميل</td></tr>';
+            }
+        }
+
+        function statusAr(s) {
+            return { pending: 'قيد الانتظار', active: 'نشط', rejected: 'مرفوض', suspended: 'معلّق' }[s] || s;
+        }
+
+        function actionButtons(m) {
+            let btns = '';
+            if (m.status !== 'active') btns += `<button class="action-btn approve" onclick="doAction('${m.id}','approve')">موافقة</button>`;
+            if (m.status !== 'rejected') btns += `<button class="action-btn reject" onclick="doAction('${m.id}','reject')">رفض</button>`;
+            if (m.status === 'active') btns += `<button class="action-btn suspend" onclick="doAction('${m.id}','suspend')">تعليق</button>`;
+            return btns;
+        }
+
+        async function doAction(id, action) {
+            if (!confirm('هل أنت متأكد؟')) return;
+            try {
+                const res = await fetch(API + '/api/admin/merchants/' + id, {
+                    method: 'PATCH',
+                    headers,
+                    body: JSON.stringify({ action })
+                });
+                if (res.ok) {
+                    loadMerchants(currentFilter);
+                    loadStats();
+                } else {
+                    const d = await res.json();
+                    alert(d.detail || 'خطأ');
+                }
+            } catch (e) { alert('خطأ في الاتصال'); }
+        }
+
+        let currentFilter = null;
+        function filterMerchants(status, btn) {
+            currentFilter = status;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            loadMerchants(status);
+        }
+
+        function formatDate(d) {
+            if (!d) return '-';
+            return new Date(d).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        function esc(s) {
+            const el = document.createElement('span');
+            el.textContent = s;
+            return el.innerHTML;
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/static/login.html';
+        }
+
+        // تحميل البيانات
+        loadStats();
+        loadMerchants();
+    </script>
+</body>
+</html>

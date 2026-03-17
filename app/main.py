@@ -5,6 +5,8 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
 
 from app.config import get_settings
 from app.database import init_firebase, get_db
@@ -67,14 +69,13 @@ app.include_router(admin.router)
 app.include_router(customers.router)
 app.include_router(points.router)
 
+# خدمة الملفات الثابتة (الواجهة)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 @app.get("/", tags=["Health"])
 def root():
-    return {
-        "status": "running",
-        "app": settings.APP_NAME,
-        "version": "1.0.0",
-    }
+    return RedirectResponse(url="/static/login.html")
 
 
 @app.get("/health", tags=["Health"])

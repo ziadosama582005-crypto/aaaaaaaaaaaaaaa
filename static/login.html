@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - نظام نقاط الولاء</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+        .container {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+        .card {
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 20px;
+            padding: 40px 30px;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo h1 {
+            font-size: 26px;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, #e94560, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .logo p { color: #aaa; font-size: 14px; }
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 4px;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            color: #888;
+        }
+        .tab.active {
+            background: #e94560;
+            color: #fff;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: #ccc;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 15px;
+            outline: none;
+            transition: border 0.3s;
+        }
+        .form-group input:focus {
+            border-color: #e94560;
+        }
+        .form-group input::placeholder { color: #666; }
+        .btn {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(135deg, #e94560, #c23152);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.3s;
+            margin-top: 5px;
+        }
+        .btn:hover { transform: translateY(-1px); opacity: 0.9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .alert {
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            display: none;
+        }
+        .alert.error { background: rgba(233,69,96,0.2); border: 1px solid #e94560; color: #ff8a9e; }
+        .alert.success { background: rgba(46,213,115,0.2); border: 1px solid #2ed573; color: #7bed9f; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="logo">
+                <h1>نظام نقاط الولاء</h1>
+                <p>Loyalty Points System</p>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('login')">تسجيل الدخول</div>
+                <div class="tab" onclick="switchTab('register')">تسجيل تاجر جديد</div>
+            </div>
+
+            <div id="alert" class="alert"></div>
+
+            <!-- نموذج تسجيل الدخول -->
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>البريد الإلكتروني</label>
+                    <input type="email" id="loginEmail" placeholder="admin@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label>كلمة المرور</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn" id="loginBtn">تسجيل الدخول</button>
+            </form>
+
+            <!-- نموذج تسجيل تاجر -->
+            <form id="registerForm" class="hidden" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label>اسم المتجر</label>
+                    <input type="text" id="regStore" placeholder="مثال: متجر النور" required minlength="2">
+                </div>
+                <div class="form-group">
+                    <label>البريد الإلكتروني</label>
+                    <input type="email" id="regEmail" placeholder="owner@store.com" required>
+                </div>
+                <div class="form-group">
+                    <label>كلمة المرور</label>
+                    <input type="password" id="regPassword" placeholder="6 أحرف على الأقل" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label>رقم الجوال (اختياري)</label>
+                    <input type="text" id="regPhone" placeholder="05xxxxxxxx">
+                </div>
+                <div class="form-group">
+                    <label>العنوان (اختياري)</label>
+                    <input type="text" id="regAddress" placeholder="المدينة - الحي">
+                </div>
+                <button type="submit" class="btn" id="regBtn">تسجيل حساب جديد</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API = window.location.origin;
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach((t, i) => {
+                t.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'register' && i === 1));
+            });
+            document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
+            document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
+            hideAlert();
+        }
+
+        function showAlert(msg, type) {
+            const el = document.getElementById('alert');
+            el.textContent = msg;
+            el.className = 'alert ' + type;
+            el.style.display = 'block';
+        }
+        function hideAlert() {
+            document.getElementById('alert').style.display = 'none';
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true;
+            btn.textContent = 'جاري الدخول...';
+            hideAlert();
+
+            try {
+                const res = await fetch(API + '/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: document.getElementById('loginEmail').value,
+                        password: document.getElementById('loginPassword').value,
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'خطأ في الدخول');
+
+                localStorage.setItem('token', data.access_token);
+
+                // جلب بيانات المستخدم لتحديد الصفحة
+                const meRes = await fetch(API + '/api/auth/me', {
+                    headers: { 'Authorization': 'Bearer ' + data.access_token }
+                });
+                const me = await meRes.json();
+                localStorage.setItem('user', JSON.stringify(me));
+
+                if (me.role === 'admin') {
+                    window.location.href = '/static/admin.html';
+                } else {
+                    if (me.merchant && me.merchant.status !== 'active') {
+                        showAlert('حسابك قيد المراجعة من الإدارة. يرجى الانتظار.', 'error');
+                        btn.disabled = false;
+                        btn.textContent = 'تسجيل الدخول';
+                        return;
+                    }
+                    window.location.href = '/static/merchant.html';
+                }
+            } catch (err) {
+                showAlert(err.message, 'error');
+            }
+            btn.disabled = false;
+            btn.textContent = 'تسجيل الدخول';
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const btn = document.getElementById('regBtn');
+            btn.disabled = true;
+            btn.textContent = 'جاري التسجيل...';
+            hideAlert();
+
+            try {
+                const res = await fetch(API + '/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        store_name: document.getElementById('regStore').value,
+                        email: document.getElementById('regEmail').value,
+                        password: document.getElementById('regPassword').value,
+                        phone: document.getElementById('regPhone').value || null,
+                        address: document.getElementById('regAddress').value || null,
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'خطأ في التسجيل');
+
+                showAlert('تم التسجيل بنجاح! حسابك قيد المراجعة من الإدارة.', 'success');
+                document.getElementById('registerForm').reset();
+            } catch (err) {
+                showAlert(err.message, 'error');
+            }
+            btn.disabled = false;
+            btn.textContent = 'تسجيل حساب جديد';
+        }
+
+        // إذا مسجل دخول مسبقاً
+        if (localStorage.getItem('token')) {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            if (user.role === 'admin') window.location.href = '/static/admin.html';
+            else if (user.role === 'merchant') window.location.href = '/static/merchant.html';
+        }
+    </script>
+</body>
+</html>
