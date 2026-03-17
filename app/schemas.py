@@ -134,6 +134,8 @@ class ProductCreateRequest(BaseModel):
     points_cost: float = Field(..., gt=0)
     stock: int = Field(-1, ge=-1)
     category: Optional[str] = None
+    product_type: str = Field("normal", pattern="^(normal|manual)$")
+    required_fields: Optional[list[str]] = None
 
 
 class ProductUpdateRequest(BaseModel):
@@ -144,6 +146,8 @@ class ProductUpdateRequest(BaseModel):
     stock: Optional[int] = Field(None, ge=-1)
     category: Optional[str] = None
     is_active: Optional[bool] = None
+    product_type: Optional[str] = Field(None, pattern="^(normal|manual)$")
+    required_fields: Optional[list[str]] = None
 
 
 class ProductOut(BaseModel):
@@ -156,6 +160,8 @@ class ProductOut(BaseModel):
     stock: int
     category: Optional[str]
     is_active: bool
+    product_type: str = "normal"
+    required_fields: Optional[list[str]] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -171,13 +177,15 @@ class RedemptionOut(BaseModel):
     product_name: str
     points_spent: float
     status: str
+    customer_name: Optional[str] = None
+    customer_notes: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
 
 
 class RedemptionActionRequest(BaseModel):
-    action: str = Field(..., pattern="^(approve|reject|delivered)$")
+    action: str = Field(..., pattern="^(approve|reject)$")
 
 
 # ──────────────────────── Store (Customer) ────────────────────────
@@ -205,3 +213,4 @@ class StoreVerifyRequest(BaseModel):
 
 class StoreRedeemRequest(BaseModel):
     product_id: str
+    customer_notes: Optional[str] = None

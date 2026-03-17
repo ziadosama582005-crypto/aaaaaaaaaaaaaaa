@@ -442,11 +442,12 @@
                             <th>النقاط</th>
                             <th>الحالة</th>
                             <th>التاريخ</th>
+                            <th>ملاحظات العميل</th>
                             <th>إجراءات</th>
                         </tr>
                     </thead>
                     <tbody id="redemptionsTable">
-                        <tr><td colspan="6" class="empty">جاري التحميل...</td></tr>
+                        <tr><td colspan="7" class="empty">جاري التحميل...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -522,9 +523,20 @@
                         <input type="number" id="prodStock" min="-1" value="-1">
                     </div>
                 </div>
-                <div class="form-group" style="margin-bottom:15px">
+                <div class="form-group" style="margin-bottom:12px">
                     <label>التصنيف (اختياري)</label>
                     <input type="text" id="prodCategory" placeholder="مثال: مشروبات">
+                </div>
+                <div class="form-group" style="margin-bottom:12px">
+                    <label>نوع المنتج</label>
+                    <select id="prodType" onchange="toggleRequiredFields()" style="width:100%;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff">
+                        <option value="normal">عادي (تسليم مباشر)</option>
+                        <option value="manual">يدوي (يتطلب بيانات من العميل)</option>
+                    </select>
+                </div>
+                <div id="requiredFieldsGroup" class="form-group" style="margin-bottom:12px;display:none">
+                    <label>الحقول المطلوبة من العميل (حقل في كل سطر)</label>
+                    <textarea id="prodRequiredFields" rows="3" placeholder="مثال:&#10;معرف اللعبة&#10;اسم الحساب&#10;السيرفر" style="width:100%;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;resize:vertical"></textarea>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width:100%" id="prodBtn">إضافة</button>
             </form>
@@ -799,7 +811,10 @@
         // رابط المتجر
         function setStoreLink() {
             if (user.merchant) {
-                const link = window.location.origin + '/static/store.html?merchant=' + user.merchant.id;
+                const shortCode = user.merchant.short_code;
+                const link = shortCode
+                    ? window.location.origin + '/s/' + shortCode
+                    : window.location.origin + '/static/store.html?merchant=' + user.merchant.id;
                 document.getElementById('storeLink').value = link;
             }
         }
@@ -850,6 +865,9 @@
             document.getElementById('prodCost').value = '';
             document.getElementById('prodStock').value = '-1';
             document.getElementById('prodCategory').value = '';
+            document.getElementById('prodType').value = 'normal';
+            document.getElementById('prodRequiredFields').value = '';
+            toggleRequiredFields();
             document.getElementById('prodBtn').textContent = 'إضافة';
             hideAlertEl('productAlert');
             document.getElementById('productModal').classList.add('show');
@@ -864,9 +882,17 @@
             document.getElementById('prodCost').value = p.points_cost;
             document.getElementById('prodStock').value = p.stock;
             document.getElementById('prodCategory').value = p.category || '';
+            document.getElementById('prodType').value = p.product_type || 'normal';
+            document.getElementById('prodRequiredFields').value = (p.required_fields || []).join('\n');
+            toggleRequiredFields();
             document.getElementById('prodBtn').textContent = 'حفظ التعديل';
             hideAlertEl('productAlert');
             document.getElementById('productModal').classList.add('show');
+        }
+
+        function toggleRequiredFields() {
+            const show = document.getElementById('prodType').value === 'manual';
+            document.getElementById('requiredFieldsGroup').style.display = show ? 'block' : 'none';
         }
 
         function closeProductModal() {
@@ -880,6 +906,10 @@
             btn.disabled = true;
             hideAlertEl('productAlert');
 
+            const prodType = document.getElementById('prodType').value;
+            const reqFieldsRaw = document.getElementById('prodRequiredFields').value.trim();
+            const reqFields = prodType === 'manual' && reqFieldsRaw ? reqFieldsRaw.split('\n').map(s => s.trim()).filter(Boolean) : null;
+
             const data = {
                 name: document.getElementById('prodName').value,
                 description: document.getElementById('prodDesc').value || null,
@@ -887,6 +917,8 @@
                 points_cost: parseFloat(document.getElementById('prodCost').value),
                 stock: parseInt(document.getElementById('prodStock').value),
                 category: document.getElementById('prodCategory').value || null,
+                product_type: prodType,
+                required_fields: reqFields,
             };
 
             try {
@@ -928,10 +960,10 @@
                 document.getElementById('pendingRedeems').textContent = list.filter(r => r.status === 'pending').length;
 
                 if (list.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="empty">لا توجد طلبات استبدال</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty">لا توجد طلبات استبدال</td></tr>';
                     return;
                 }
-                const statusAr = { pending: 'معلق', approved: 'مقبول', rejected: 'مرفوض', delivered: 'تم التسليم' };
+                const statusAr = { pending: 'معلق', approved: 'مقبول', rejected: 'مرفوض' };
                 tbody.innerHTML = list.map(r => `
                     <tr>
                         <td data-label="العميل">${esc(r.customer_name || '-')}</td>
@@ -939,11 +971,12 @@
                         <td data-label="النقاط" style="color:#ffa502">${r.points_spent}</td>
                         <td data-label="الحالة"><span class="badge ${r.status}">${statusAr[r.status] || r.status}</span></td>
                         <td data-label="التاريخ">${formatDate(r.created_at)}</td>
+                        <td data-label="ملاحظات">${r.customer_notes ? '<div style=\"background:rgba(255,165,2,0.1);padding:6px 8px;border-radius:6px;font-size:12px;white-space:pre-line\">' + esc(r.customer_notes) + '</div>' : '-'}</td>
                         <td data-label="">${redemptionActions(r)}</td>
                     </tr>
                 `).join('');
             } catch (e) {
-                tbody.innerHTML = '<tr><td colspan="6" class="empty">خطأ في التحميل</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="empty">خطأ في التحميل</td></tr>';
             }
         }
 
@@ -952,15 +985,12 @@
                 return `<button class="btn btn-success btn-sm" onclick="updateRedemption('${r.id}','approve')">موافقة</button>
                         <button class="btn btn-danger btn-sm" onclick="updateRedemption('${r.id}','reject')">رفض</button>`;
             }
-            if (r.status === 'approved') {
-                return `<button class="btn btn-primary btn-sm" onclick="updateRedemption('${r.id}','delivered')">تم التسليم</button>`;
-            }
             return '-';
         }
 
         async function updateRedemption(id, action) {
-            const msgs = { approve: 'هل تريد الموافقة على هذا الطلب؟', reject: 'هل تريد رفض هذا الطلب؟ سيتم إرجاع النقاط للعميل', delivered: 'هل تم تسليم هذا الطلب للعميل؟' };
-            const icons = { approve: '✅', reject: '❌', delivered: '📦' };
+            const msgs = { approve: 'هل تريد الموافقة على هذا الطلب؟', reject: 'هل تريد رفض هذا الطلب؟ سيتم إرجاع النقاط للعميل' };
+            const icons = { approve: '✅', reject: '❌' };
             const ok = await showConfirm('تأكيد', msgs[action] || 'هل أنت متأكد؟', icons[action] || '⚠️', action === 'reject');
             if (!ok) return;
             try {

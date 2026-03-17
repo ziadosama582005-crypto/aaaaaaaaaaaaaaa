@@ -183,6 +183,7 @@ def redeem_product(body: StoreRedeemRequest, customer_id: str = Query(...), merc
         product_id=body.product_id,
         product_name=product["name"],
         points_spent=product["points_cost"],
+        customer_notes=body.customer_notes,
     )
 
     # إرسال إشعار بالإيميل للعميل

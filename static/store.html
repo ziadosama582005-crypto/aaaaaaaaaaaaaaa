@@ -316,6 +316,20 @@
         </div>
     </div>
 
+    <!-- مودال بيانات المنتج اليدوي -->
+    <div class="confirm-overlay" id="manualModal">
+        <div class="confirm-box" style="max-width:400px;text-align:right">
+            <div class="confirm-icon">📝</div>
+            <div class="confirm-title">أدخل البيانات المطلوبة</div>
+            <div id="manualFields" style="margin:15px 0"></div>
+            <div id="manualAlert" style="color:#e94560;font-size:13px;margin-bottom:8px;display:none"></div>
+            <div class="confirm-btns">
+                <button class="btn-confirm-yes" id="manualSubmit">🎁 تأكيد الاستبدال</button>
+                <button class="btn-confirm-no" id="manualCancel">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API = window.location.origin;
         const params = new URLSearchParams(window.location.search);
@@ -326,6 +340,7 @@
         }
 
         let customer = null;
+        let productsData = [];
 
         // جلب بيانات المتجر
         async function loadStoreInfo() {
@@ -424,6 +439,7 @@
             try {
                 const res = await fetch(API + '/api/store/merchant/' + merchantId + '/products');
                 const list = await res.json();
+                productsData = list;
 
                 if (list.length === 0) {
                     grid.innerHTML = '<p style="color:#555;grid-column:1/-1;text-align:center;padding:30px">لا توجد منتجات متوفرة حالياً</p>';
@@ -432,10 +448,12 @@
 
                 grid.innerHTML = list.map(p => {
                     const canAfford = customer.points_balance >= p.points_cost;
+                    const isManual = p.product_type === 'manual';
                     return `
                     <div class="product-card">
-                        ${p.image_url ? '<img class="prod-img" src="' + esc(p.image_url) + '" alt="' + esc(p.name) + '" onerror="this.style.display=\'none\'">' : '<div class="prod-img" style="display:flex;align-items:center;justify-content:center;font-size:36px">🎁</div>'}
+                        ${p.image_url ? '<img class="prod-img" src="' + esc(p.image_url) + '" alt="' + esc(p.name) + '" onerror="this.style.display=\'none\'">' : '<div class="prod-img" style="display:flex;align-items:center;justify-content:center;font-size:36px">' + (isManual ? '📝' : '🎁') + '</div>'}
                         ${p.category ? '<span class="prod-cat">' + esc(p.category) + '</span>' : ''}
+                        ${isManual ? '<span class="prod-cat" style="background:rgba(255,165,2,0.2);color:#ffa502;right:auto;left:8px">يدوي</span>' : ''}
                         <div class="prod-name">${esc(p.name)}</div>
                         <div class="prod-desc">${esc(p.description || '')}</div>
                         <div class="prod-footer">
@@ -468,15 +486,29 @@
 
         // استبدال منتج
         async function redeemProduct(productId, productName, cost) {
-            const ok = await showConfirm('تأكيد الاستبدال', `هل تريد استبدال "${productName}" مقابل ${cost} نقطة؟`, '🎁');
-            if (!ok) return;
+            const product = productsData.find(p => p.id === productId);
+            const isManual = product && product.product_type === 'manual' && product.required_fields && product.required_fields.length > 0;
+
+            let customerNotes = null;
+
+            if (isManual) {
+                customerNotes = await showManualForm(product.required_fields);
+                if (customerNotes === null) return;
+            } else {
+                const ok = await showConfirm('تأكيد الاستبدال', `هل تريد استبدال "${productName}" مقابل ${cost} نقطة؟`, '🎁');
+                if (!ok) return;
+            }
+
             hideAlert('storeAlert');
 
             try {
+                const bodyData = { product_id: productId };
+                if (customerNotes) bodyData.customer_notes = customerNotes;
+
                 const res = await fetch(API + '/api/store/redeem?customer_id=' + customer.id + '&merchant_id=' + merchantId, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ product_id: productId })
+                    body: JSON.stringify(bodyData)
                 });
                 const d = await res.json();
                 if (!res.ok) throw new Error(d.detail);
@@ -491,6 +523,42 @@
             }
         }
 
+        // مودال البيانات اليدوية
+        function showManualForm(fields) {
+            return new Promise(resolve => {
+                const container = document.getElementById('manualFields');
+                container.innerHTML = fields.map((f, i) => `
+                    <div style="margin-bottom:10px">
+                        <label style="display:block;font-size:13px;margin-bottom:4px;color:#ccc">${esc(f)} *</label>
+                        <input type="text" class="manual-input" data-field="${esc(f)}" required placeholder="أدخل ${esc(f)}" style="width:100%;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box">
+                    </div>
+                `).join('');
+                document.getElementById('manualAlert').style.display = 'none';
+                document.getElementById('manualModal').classList.add('show');
+
+                document.getElementById('manualSubmit').onclick = () => {
+                    const inputs = container.querySelectorAll('.manual-input');
+                    const lines = [];
+                    let valid = true;
+                    inputs.forEach(inp => {
+                        if (!inp.value.trim()) { valid = false; inp.style.borderColor = '#e94560'; }
+                        else { inp.style.borderColor = 'rgba(255,255,255,0.15)'; lines.push(inp.dataset.field + ': ' + inp.value.trim()); }
+                    });
+                    if (!valid) {
+                        document.getElementById('manualAlert').textContent = 'يرجى تعبئة جميع الحقول';
+                        document.getElementById('manualAlert').style.display = 'block';
+                        return;
+                    }
+                    document.getElementById('manualModal').classList.remove('show');
+                    resolve(lines.join('\n'));
+                };
+                document.getElementById('manualCancel').onclick = () => {
+                    document.getElementById('manualModal').classList.remove('show');
+                    resolve(null);
+                };
+            });
+        }
+
         // سجل استبدالاتي
         async function loadMyRedemptions() {
             const div = document.getElementById('myRedemptions');
@@ -503,7 +571,7 @@
                     return;
                 }
 
-                const statusAr = { pending: 'قيد المراجعة', approved: 'مقبول', rejected: 'مرفوض', delivered: 'تم التسليم' };
+                const statusAr = { pending: 'قيد المراجعة', approved: 'مقبول', rejected: 'مرفوض' };
                 div.innerHTML = list.map(r => `
                     <div class="redemption-item">
                         <div>

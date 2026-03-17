@@ -78,6 +78,7 @@ def get_my_profile(user: dict = Depends(get_current_user)):
                 "address": profile.get("address"),
                 "phone": profile.get("phone"),
                 "status": profile["status"],
+                "short_code": profile.get("short_code"),
             }
 
     return data

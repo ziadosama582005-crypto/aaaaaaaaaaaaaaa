@@ -17,6 +17,23 @@ def utcnow_str() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _next_short_code(db) -> str:
+    """Generate next short code like A1/0001, A1/0002, ..., A1/9999, A2/0001, ..."""
+    counter_ref = db.collection("counters").document("merchant_code")
+    doc = counter_ref.get()
+    if doc.exists:
+        num = doc.to_dict().get("value", 0) + 1
+    else:
+        num = 1
+    counter_ref.set({"value": num})
+
+    prefix_num = (num - 1) // 9999
+    seq = ((num - 1) % 9999) + 1
+    letter = chr(ord('A') + prefix_num // 9)
+    digit = (prefix_num % 9) + 1
+    return f"{letter}{digit}/{seq:04d}"
+
+
 # ═══════════════════════ Users ═══════════════════════
 
 class UserService:
@@ -69,12 +86,14 @@ class MerchantService:
     def create(db, *, user_id: str, store_name: str, address: str = None,
                phone: str = None, email: str = "") -> dict:
         mid = generate_id()
+        short_code = _next_short_code(db)
         data = {
             "user_id": user_id,
             "store_name": store_name,
             "address": address,
             "phone": phone,
             "email": email,
+            "short_code": short_code,
             "status": "pending",
             "approved_at": None,
             "created_at": utcnow_str(),
@@ -87,6 +106,20 @@ class MerchantService:
     def get_by_id(db, merchant_id: str) -> dict | None:
         doc = db.collection(MerchantService.COLLECTION).document(merchant_id).get()
         if doc.exists:
+            d = doc.to_dict()
+            d["id"] = doc.id
+            return d
+        return None
+
+    @staticmethod
+    def get_by_short_code(db, short_code: str) -> dict | None:
+        docs = (
+            db.collection(MerchantService.COLLECTION)
+            .where(filter=FieldFilter("short_code", "==", short_code))
+            .limit(1)
+            .stream()
+        )
+        for doc in docs:
             d = doc.to_dict()
             d["id"] = doc.id
             return d
@@ -257,7 +290,8 @@ class ProductService:
     @staticmethod
     def create(db, *, merchant_id: str, name: str, description: str = None,
                image_url: str = None, points_cost: float, stock: int = -1,
-               category: str = None) -> dict:
+               category: str = None, product_type: str = "normal",
+               required_fields: list = None) -> dict:
         pid = generate_id()
         data = {
             "merchant_id": merchant_id,
@@ -267,6 +301,8 @@ class ProductService:
             "points_cost": points_cost,
             "stock": stock,
             "category": category,
+            "product_type": product_type,
+            "required_fields": required_fields,
             "is_active": True,
             "created_at": utcnow_str(),
         }
@@ -309,7 +345,7 @@ class RedemptionService:
 
     @staticmethod
     def create(db, *, customer_id: str, merchant_id: str, product_id: str,
-               product_name: str, points_spent: float) -> dict:
+               product_name: str, points_spent: float, customer_notes: str = None) -> dict:
         rid = generate_id()
         data = {
             "customer_id": customer_id,
@@ -317,6 +353,7 @@ class RedemptionService:
             "product_id": product_id,
             "product_name": product_name,
             "points_spent": points_spent,
+            "customer_notes": customer_notes,
             "status": "pending",
             "created_at": utcnow_str(),
         }

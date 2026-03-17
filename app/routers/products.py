@@ -33,6 +33,8 @@ def create_product(
         points_cost=body.points_cost,
         stock=body.stock,
         category=body.category,
+        product_type=body.product_type,
+        required_fields=body.required_fields,
     )
     return product
 
@@ -101,7 +103,7 @@ def update_redemption(
     if not redemption or redemption.get("merchant_id") != merchant["id"]:
         raise HTTPException(status_code=404, detail="الطلب غير موجود")
 
-    if redemption["status"] != "pending" and body.action != "delivered":
+    if redemption["status"] != "pending":
         raise HTTPException(status_code=400, detail="لا يمكن تعديل هذا الطلب")
 
     # إذا رفض → أرجع النقاط للعميل
@@ -122,6 +124,6 @@ def update_redemption(
                     redemption["points_spent"], new_balance,
                 )
 
-    status_map = {"approve": "approved", "reject": "rejected", "delivered": "delivered"}
+    status_map = {"approve": "approved", "reject": "rejected"}
     RedemptionService.update_status(db, redemption_id, status_map[body.action])
     return {"detail": "تم تحديث حالة الطلب"}

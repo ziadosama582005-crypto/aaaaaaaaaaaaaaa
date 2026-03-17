@@ -3,14 +3,14 @@
 """
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, Response
 
 from app.config import get_settings
 from app.database import init_firebase, get_db
-from app.models import UserService
+from app.models import UserService, MerchantService
 from app.auth import hash_password
 from app.routers import admin, merchants, customers, points, products, store
 
@@ -89,3 +89,13 @@ def favicon():
 @app.get("/health", tags=["Health"])
 def health_check():
     return {"status": "healthy"}
+
+
+@app.get("/s/{short_code:path}", tags=["Store"])
+def resolve_short_code(short_code: str):
+    """تحويل الرابط القصير إلى صفحة المتجر"""
+    db = get_db()
+    merchant = MerchantService.get_by_short_code(db, short_code)
+    if not merchant:
+        raise HTTPException(status_code=404, detail="المتجر غير موجود")
+    return RedirectResponse(url=f"/static/store.html?merchant={merchant['id']}")
