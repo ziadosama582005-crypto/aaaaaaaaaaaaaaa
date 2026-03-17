@@ -32,9 +32,14 @@ def seed_admin():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # عند بدء التشغيل
-    init_firebase()
-    seed_admin()
-    print("🚀 النظام جاهز للعمل")
+    try:
+        init_firebase()
+        print("✅ Firebase متصل")
+        seed_admin()
+        print("🚀 النظام جاهز للعمل")
+    except Exception as e:
+        print(f"❌ خطأ في التشغيل: {e}")
+        raise
     yield
     # عند الإيقاف
     print("👋 تم إيقاف النظام")
