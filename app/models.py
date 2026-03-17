@@ -1,3 +1,36 @@
+# ═══════════════════════ Ratings ═══════════════════════
+
+class RatingService:
+    COLLECTION = "ratings"
+
+    @staticmethod
+    def add_rating(db, *, customer_id: str, product_id: str, merchant_id: str, rating: int, comment: str = None) -> dict:
+        from datetime import datetime, timezone
+        rid = generate_id()
+        data = {
+            "customer_id": customer_id,
+            "product_id": product_id,
+            "merchant_id": merchant_id,
+            "rating": rating,
+            "comment": comment,
+            "created_at": utcnow_str(),
+        }
+        db.collection(RatingService.COLLECTION).document(rid).set(data)
+        data["id"] = rid
+        return data
+
+    @staticmethod
+    def get_product_ratings(db, product_id: str) -> list[dict]:
+        docs = db.collection(RatingService.COLLECTION).where(filter=FieldFilter("product_id", "==", product_id)).stream()
+        return [{"id": doc.id, **doc.to_dict()} for doc in docs]
+
+    @staticmethod
+    def get_avg_rating(db, product_id: str) -> dict:
+        ratings = RatingService.get_product_ratings(db, product_id)
+        if not ratings:
+            return {"avg": 0, "count": 0}
+        total = sum(r.get("rating", 0) for r in ratings)
+        return {"avg": round(total / len(ratings), 2), "count": len(ratings)}
 """
 خدمة Firestore - عمليات CRUD على المجموعات
 Collections: users, merchants, customers, points_transactions, products, redemptions, verification_codes

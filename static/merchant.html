@@ -431,6 +431,16 @@
             <button class="btn btn-primary btn-sm" onclick="saveSettings()">حفظ الإعدادات</button>
         </div>
 
+        <!-- إدارة المستويات (Tiers) -->
+        <div class="section">
+            <h3 class="section-title">المستويات (Tiers)</h3>
+            <div id="tiersAlert" class="alert"></div>
+            <div id="tiersList"></div>
+            <button class="btn btn-primary btn-sm" onclick="addTierRow()">+ إضافة مستوى</button>
+            <button class="btn btn-success btn-sm" onclick="saveTiers()" style="margin-right:8px">حفظ المستويات</button>
+        </div>
+        </div>
+
         <!-- المنتجات -->
         <div class="section">
             <h3 class="section-title">
@@ -640,14 +650,30 @@
                 const totalBal = list.reduce((s, c) => s + (c.points_balance || 0), 0);
                 document.getElementById('totalBal').textContent = totalBal.toLocaleString();
 
+                // جلب المستويات من user.merchant
+                const tiers = (user.merchant && Array.isArray(user.merchant.tiers)) ? user.merchant.tiers : [];
+                function getTier(points) {
+                    if (!tiers.length) return null;
+                    let best = null;
+                    for (const t of tiers) {
+                        if (points >= t.min_points && (!best || t.min_points > best.min_points)) best = t;
+                    }
+                    return best;
+                }
+
                 if (list.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="5" class="empty">لا يوجد عملاء. أضف أول عميل!</td></tr>';
                     return;
                 }
 
-                tbody.innerHTML = list.map(c => `
+                tbody.innerHTML = list.map(c => {
+                    const tier = getTier((c.total_earned !== undefined ? c.total_earned : c.points_balance) || 0);
+                    return `
                     <tr>
-                        <td data-label="الاسم"><strong>${esc(c.name)}</strong></td>
+                        <td data-label="الاسم">
+                            <strong>${esc(c.name)}</strong>
+                            ${tier ? `<span class="badge" style="background:${tier.color};color:#222;margin-right:6px;font-size:11px">${esc(tier.name)}</span>` : ''}
+                        </td>
                         <td data-label="البريد">${esc(c.email || '-')}</td>
                         <td data-label="الجوال">${esc(c.phone || '-')}</td>
                         <td data-label="الرصيد" style="font-weight:bold;color:${c.points_balance > 0 ? '#2ed573' : '#888'}">${c.points_balance}</td>
@@ -655,7 +681,8 @@
                             <button class="btn btn-primary btn-sm" onclick="openPoints('${c.id}','${esc(c.name)}',${c.points_balance})">نقاط</button>
                         </td>
                     </tr>
-                `).join('');
+                    `;
+                }).join('');
             } catch (e) {
                 tbody.innerHTML = '<tr><td colspan="5" class="empty">خطأ في التحميل</td></tr>';
             }
@@ -840,6 +867,8 @@
                     document.getElementById('themeColor').value = user.merchant.theme_color;
                     document.getElementById('themeColorLabel').textContent = user.merchant.theme_color;
                 }
+                // تحميل المستويات
+                loadTiers(user.merchant.tiers);
             }
         }
         async function saveSettings() {
@@ -858,6 +887,59 @@
                 if (!res.ok) throw new Error(d.detail || 'خطأ');
                 showToast('✅ تم حفظ الإعدادات', 'success');
             } catch (err) { showAlertEl('settingsAlert', err.message, 'error'); }
+        }
+
+        // ═══════════ المستويات (Tiers) ═══════════
+        let tiersData = [];
+        function loadTiers(tiers) {
+            tiersData = Array.isArray(tiers) && tiers.length ? JSON.parse(JSON.stringify(tiers)) : [
+                { name: 'برونزي', min_points: 0, color: '#cd7f32' },
+                { name: 'فضي', min_points: 500, color: '#c0c0c0' },
+                { name: 'ذهبي', min_points: 2000, color: '#ffd700' },
+            ];
+            renderTiers();
+        }
+        function renderTiers() {
+            const div = document.getElementById('tiersList');
+            div.innerHTML = '';
+            tiersData.forEach((t, i) => {
+                div.innerHTML += `
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+                    <input type="text" value="${esc(t.name)}" onchange="updateTier(${i},'name',this.value)" placeholder="اسم المستوى" style="width:110px;padding:7px;border-radius:6px;border:1px solid #888;background:#222;color:#fff">
+                    <input type="number" value="${t.min_points}" min="0" onchange="updateTier(${i},'min_points',this.value)" placeholder="النقاط المطلوبة" style="width:90px;padding:7px;border-radius:6px;border:1px solid #888;background:#222;color:#fff">
+                    <input type="color" value="${t.color}" onchange="updateTier(${i},'color',this.value)" style="width:38px;height:38px;border:none;background:none;cursor:pointer">
+                    <span style="font-size:12px;color:#888">${t.color}</span>
+                    <button class="btn btn-danger btn-sm" onclick="removeTier(${i})">حذف</button>
+                </div>`;
+            });
+        }
+        function updateTier(idx, key, val) {
+            if (key === 'min_points') val = parseInt(val) || 0;
+            tiersData[idx][key] = val;
+        }
+        function addTierRow() {
+            if (tiersData.length >= 10) { showAlertEl('tiersAlert', 'الحد الأقصى 10 مستويات', 'error'); return; }
+            tiersData.push({ name: '', min_points: 0, color: '#888888' });
+            renderTiers();
+        }
+        function removeTier(idx) {
+            tiersData.splice(idx, 1);
+            renderTiers();
+        }
+        async function saveTiers() {
+            hideAlertEl('tiersAlert');
+            // تحقق من صحة البيانات
+            for (const t of tiersData) {
+                if (!t.name.trim()) { showAlertEl('tiersAlert', 'كل مستوى يجب أن يحتوي على اسم', 'error'); return; }
+                if (t.min_points < 0) { showAlertEl('tiersAlert', 'النقاط يجب أن تكون 0 أو أكثر', 'error'); return; }
+                if (!/^#[0-9a-fA-F]{6}$/.test(t.color)) { showAlertEl('tiersAlert', 'لون غير صالح', 'error'); return; }
+            }
+            try {
+                const res = await fetch(API + '/api/auth/settings', { method: 'PUT', headers, body: JSON.stringify({ tiers: tiersData }) });
+                const d = await res.json();
+                if (!res.ok) throw new Error(d.detail || 'خطأ');
+                showToast('✅ تم حفظ المستويات', 'success');
+            } catch (err) { showAlertEl('tiersAlert', err.message, 'error'); }
         }
 
         // تحميل البيانات

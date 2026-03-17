@@ -438,7 +438,16 @@
         function showStore() {
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('storeScreen').classList.remove('hidden');
-            document.getElementById('custName').textContent = customer.name;
+            // شارة المستوى
+            let tierBadge = '';
+            if (storeInfo && Array.isArray(storeInfo.tiers)) {
+                let best = null;
+                for (const t of storeInfo.tiers) {
+                    if (customer.total_earned !== undefined && customer.total_earned >= t.min_points && (!best || t.min_points > best.min_points)) best = t;
+                }
+                if (best) tierBadge = `<span class='badge' style='background:${best.color};color:#222;margin-right:6px;font-size:11px'>${esc(best.name)}</span>`;
+            }
+            document.getElementById('custName').innerHTML = esc(customer.name) + (tierBadge ? ' ' + tierBadge : '');
             document.getElementById('custBalance').textContent = customer.points_balance;
             loadStoreProducts();
             loadMyRedemptions();
