@@ -109,12 +109,13 @@ class MerchantService:
         query = db.collection(MerchantService.COLLECTION)
         if status:
             query = query.where("status", "==", status)
-        docs = query.order_by("created_at", direction="DESCENDING").stream()
+        docs = query.stream()
         result = []
         for doc in docs:
             d = doc.to_dict()
             d["id"] = doc.id
             result.append(d)
+        result.sort(key=lambda x: x.get("created_at", ""), reverse=True)
         return result
 
     @staticmethod
@@ -160,10 +161,11 @@ class CustomerService:
         docs = (
             db.collection(CustomerService.COLLECTION)
             .where("merchant_id", "==", merchant_id)
-            .order_by("created_at", direction="DESCENDING")
             .stream()
         )
-        return [{"id": doc.id, **doc.to_dict()} for doc in docs]
+        result = [{"id": doc.id, **doc.to_dict()} for doc in docs]
+        result.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        return result
 
     @staticmethod
     def find_duplicate(db, merchant_id: str, email: str = None, phone: str = None) -> dict | None:
@@ -225,11 +227,11 @@ class PointsService:
         docs = (
             db.collection(PointsService.COLLECTION)
             .where("customer_id", "==", customer_id)
-            .order_by("created_at", direction="DESCENDING")
-            .limit(limit)
             .stream()
         )
-        return [{"id": doc.id, **doc.to_dict()} for doc in docs]
+        result = [{"id": doc.id, **doc.to_dict()} for doc in docs]
+        result.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        return result[:limit]
 
     @staticmethod
     def sum_added(db) -> float:
