@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 
 from app.config import get_settings
 from app.database import init_firebase, get_db
@@ -76,6 +76,12 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/", tags=["Health"])
 def root():
     return RedirectResponse(url="/static/login.html")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="80" font-size="80">⭐</text></svg>'
+    return Response(content=svg, media_type="image/svg+xml")
 
 
 @app.get("/health", tags=["Health"])
