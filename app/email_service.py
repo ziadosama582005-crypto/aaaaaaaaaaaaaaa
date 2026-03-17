@@ -3,6 +3,7 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
 
 from app.config import get_settings
 
@@ -17,7 +18,7 @@ def _send_email(to_email: str, subject: str, html: str, plain: str = "") -> bool
     from_name = settings.SMTP_FROM_NAME or "TR Store"
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = f"{from_name} <{settings.SMTP_EMAIL}>"
+    msg["From"] = formataddr((from_name, settings.SMTP_EMAIL))
     msg["To"] = to_email
     msg.attach(MIMEText(plain or subject, "plain", "utf-8"))
     msg.attach(MIMEText(html, "html", "utf-8"))
