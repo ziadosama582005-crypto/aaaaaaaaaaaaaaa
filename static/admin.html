@@ -152,6 +152,32 @@
         .action-btn.suspend { background: #808080; color: #fff; }
         .empty { text-align: center; padding: 40px; color: #555; }
         .loading { text-align: center; padding: 30px; color: #666; }
+
+        /* Mobile Responsive */
+        @media (max-width: 600px) {
+            .navbar {
+                padding: 12px 15px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .navbar h2 { font-size: 15px; }
+            .navbar .user-info {
+                gap: 8px;
+                font-size: 12px;
+                flex-wrap: wrap;
+            }
+            .navbar .user-info span { font-size: 11px; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+            .content { padding: 15px 10px; }
+            .stats { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .stat-card { padding: 14px 8px; }
+            .stat-card .number { font-size: 22px; }
+            .stat-card .label { font-size: 11px; }
+            .section-title { font-size: 15px; }
+            .filter-bar { gap: 6px; }
+            .filter-btn { padding: 6px 12px; font-size: 12px; }
+            th, td { padding: 8px 6px; font-size: 12px; }
+            .action-btn { padding: 4px 8px; font-size: 11px; margin-bottom: 4px; display: inline-block; }
+        }
     </style>
 </head>
 <body>

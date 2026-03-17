@@ -208,6 +208,37 @@
         .history-item .add { color: #2ed573; }
         .history-item .deduct { color: #e94560; }
         .history-item .meta { color: #777; font-size: 12px; }
+
+        /* Mobile Responsive */
+        @media (max-width: 600px) {
+            .navbar {
+                padding: 12px 15px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .navbar h2 { font-size: 16px; }
+            .navbar .user-info {
+                gap: 8px;
+                font-size: 12px;
+                flex-wrap: wrap;
+            }
+            .navbar .user-info span { font-size: 11px; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+            .content { padding: 15px 10px; }
+            .stats { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .stat-card { padding: 15px 10px; }
+            .stat-card .number { font-size: 24px; }
+            .stat-card .label { font-size: 11px; }
+            .section { padding: 15px 12px; }
+            .section-title { font-size: 15px; }
+            .form-row { grid-template-columns: 1fr; gap: 10px; }
+            .form-group label { font-size: 12px; }
+            .form-group input, .form-group select { font-size: 14px; padding: 10px; }
+            .btn { padding: 10px 16px; font-size: 13px; }
+            .search-bar input { font-size: 13px; padding: 10px; }
+            th, td { padding: 8px 6px; font-size: 12px; }
+            .btn-sm { padding: 5px 10px; font-size: 11px; }
+            .modal { padding: 20px 15px; width: 95%; }
+        }
     </style>
 </head>
 <body>
