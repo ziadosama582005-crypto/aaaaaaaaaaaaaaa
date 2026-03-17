@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>متجر المكافآت</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: rgba(15,15,26,0.95);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        .navbar h2 {
+            font-size: 18px;
+            background: linear-gradient(90deg, #ffa502, #ff6348);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .navbar .user-info { display: flex; align-items: center; gap: 10px; }
+        .navbar .balance-badge {
+            padding: 6px 14px;
+            background: rgba(46,213,115,0.15);
+            border: 1px solid rgba(46,213,115,0.3);
+            border-radius: 20px;
+            color: #2ed573;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .logout-btn {
+            padding: 7px 14px;
+            background: rgba(233,69,96,0.15);
+            border: 1px solid rgba(233,69,96,0.3);
+            border-radius: 8px;
+            color: #e94560;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .content { max-width: 900px; margin: 0 auto; padding: 25px 15px; }
+
+        /* Login */
+        .login-container {
+            max-width: 400px;
+            margin: 60px auto;
+            padding: 0 15px;
+        }
+        .login-card {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 30px 24px;
+            text-align: center;
+        }
+        .login-card h2 {
+            margin-bottom: 8px;
+            font-size: 22px;
+            background: linear-gradient(90deg, #ffa502, #ff6348);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .login-card p { color: #888; font-size: 14px; margin-bottom: 24px; }
+        .form-group { margin-bottom: 15px; text-align: right; }
+        .form-group label { display: block; font-size: 13px; color: #aaa; margin-bottom: 6px; }
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 15px;
+            outline: none;
+        }
+        .form-group input:focus { border-color: #ffa502; }
+        .form-group input::placeholder { color: #555; }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: linear-gradient(135deg, #ffa502, #ff6348); color: #fff; }
+        .btn-success { background: #2ed573; color: #000; }
+        .btn-sm { padding: 8px 16px; font-size: 13px; width: auto; }
+        .alert {
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            display: none;
+        }
+        .alert.error { background: rgba(233,69,96,0.15); border: 1px solid rgba(233,69,96,0.3); color: #ff8a9e; }
+        .alert.success { background: rgba(46,213,115,0.15); border: 1px solid rgba(46,213,115,0.3); color: #7bed9f; }
+
+        /* Products Grid */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+        .product-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            transition: border-color 0.2s;
+        }
+        .product-card:hover { border-color: rgba(255,165,2,0.3); }
+        .product-card .prod-img {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            background: rgba(255,255,255,0.03);
+        }
+        .product-card .prod-name { font-size: 16px; font-weight: bold; margin-bottom: 6px; }
+        .product-card .prod-desc { font-size: 13px; color: #888; margin-bottom: 10px; flex: 1; }
+        .product-card .prod-cat {
+            font-size: 11px;
+            color: #ffa502;
+            background: rgba(255,165,2,0.1);
+            padding: 3px 8px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .product-card .prod-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+        }
+        .product-card .prod-price {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffa502;
+        }
+        .product-card .prod-price small { font-size: 12px; color: #888; }
+        .product-card .prod-stock { font-size: 12px; color: #888; }
+
+        /* Section titles */
+        .section-title {
+            font-size: 18px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .section-sub { color: #888; font-size: 13px; margin-bottom: 15px; }
+
+        /* Redemptions */
+        .redemption-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; }
+        .badge.pending { background: rgba(255,165,2,0.15); color: #ffa502; }
+        .badge.approved { background: rgba(46,213,115,0.15); color: #2ed573; }
+        .badge.rejected { background: rgba(233,69,96,0.15); color: #e94560; }
+        .badge.delivered { background: rgba(112,161,255,0.15); color: #70a1ff; }
+
+        .hidden { display: none; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 12px 12px; flex-wrap: wrap; gap: 8px; }
+            .navbar h2 { font-size: 15px; }
+            .content { padding: 15px 10px; }
+            .products-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .product-card { padding: 14px; }
+            .product-card .prod-img { height: 100px; }
+            .product-card .prod-name { font-size: 14px; }
+            .product-card .prod-price { font-size: 15px; }
+            .btn-sm { padding: 6px 12px; font-size: 12px; }
+            .login-card { padding: 24px 18px; }
+        }
+        @media (max-width: 400px) {
+            .products-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- شاشة تسجيل الدخول -->
+    <div id="loginScreen">
+        <div class="login-container">
+            <div class="login-card">
+                <h2 id="loginStoreTitle">متجر المكافآت</h2>
+                <p id="loginStoreDesc">سجل دخولك لاستبدال نقاطك بمكافآت</p>
+                <div id="loginAlert" class="alert"></div>
+
+                <!-- خطوة 1: إدخال الإيميل -->
+                <form id="emailForm" onsubmit="sendCode(event)">
+                    <div class="form-group">
+                        <label>البريد الإلكتروني</label>
+                        <input type="email" id="loginEmail" placeholder="user@gmail.com" required pattern=".+@gmail\.com$" title="يجب أن ينتهي البريد بـ @gmail.com">
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="sendCodeBtn">إرسال كود التحقق</button>
+                </form>
+
+                <!-- خطوة 2: إدخال الكود -->
+                <form id="codeForm" class="hidden" onsubmit="verifyCode(event)">
+                    <div class="form-group">
+                        <label>كود التحقق</label>
+                        <input type="text" id="loginCode" placeholder="أدخل الكود المكون من 6 أرقام" required maxlength="6" style="text-align:center;font-size:20px;letter-spacing:8px">
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="verifyBtn">تأكيد</button>
+                    <p style="margin-top:12px;font-size:12px;color:#888">لم يصلك الكود؟ <a href="#" onclick="backToEmail()" style="color:#ffa502">حاول مرة أخرى</a></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- شاشة المتجر -->
+    <div id="storeScreen" class="hidden">
+        <nav class="navbar">
+            <h2>🎁 <span id="navStoreName">المتجر</span></h2>
+            <div class="user-info">
+                <span id="custName" style="color:#aaa;font-size:13px"></span>
+                <span class="balance-badge">⭐ <span id="custBalance">0</span> نقطة</span>
+                <button class="logout-btn" onclick="storeLogout()">خروج</button>
+            </div>
+        </nav>
+
+        <div class="content">
+            <div id="storeAlert" class="alert"></div>
+
+            <!-- المنتجات -->
+            <h3 class="section-title">المنتجات المتوفرة</h3>
+            <p class="section-sub">استبدل نقاطك بالمكافآت التالية</p>
+            <div class="products-grid" id="productsGrid">
+                <p style="color:#555">جاري التحميل...</p>
+            </div>
+
+            <!-- سجل الاستبدالات -->
+            <h3 class="section-title" style="margin-top:30px">سجل استبدالاتي</h3>
+            <div id="myRedemptions" style="margin-top:10px">
+                <p style="color:#555">جاري التحميل...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = window.location.origin;
+        const params = new URLSearchParams(window.location.search);
+        const merchantId = params.get('merchant');
+
+        if (!merchantId) {
+            document.body.innerHTML = '<div style="text-align:center;margin-top:100px;color:#e94560"><h2>رابط غير صالح</h2><p>لا يوجد معرّف للمتجر</p></div>';
+        }
+
+        let customer = null;
+
+        // جلب بيانات المتجر
+        async function loadStoreInfo() {
+            try {
+                const res = await fetch(API + '/api/store/merchant/' + merchantId);
+                if (!res.ok) throw new Error();
+                const info = await res.json();
+                document.getElementById('loginStoreTitle').textContent = '🎁 ' + info.store_name;
+                document.getElementById('loginStoreDesc').textContent = 'سجل دخولك لاستبدال نقاطك بمكافآت';
+                document.getElementById('navStoreName').textContent = info.store_name;
+                document.title = info.store_name + ' - متجر المكافآت';
+            } catch (e) {
+                document.body.innerHTML = '<div style="text-align:center;margin-top:100px;color:#e94560"><h2>المتجر غير موجود</h2><p>تأكد من الرابط</p></div>';
+            }
+        }
+        if (merchantId) loadStoreInfo();
+
+        // إرسال كود التحقق
+        async function sendCode(e) {
+            e.preventDefault();
+            const btn = document.getElementById('sendCodeBtn');
+            btn.disabled = true;
+            btn.textContent = 'جاري الإرسال...';
+            hideAlert('loginAlert');
+
+            try {
+                const email = document.getElementById('loginEmail').value;
+                const res = await fetch(API + '/api/store/send-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, merchant_id: merchantId })
+                });
+                const d = await res.json();
+                if (!res.ok) throw new Error(d.detail);
+
+                // في بيئة التطوير نعرض الكود مباشرة
+                if (d.code) {
+                    showAlert('loginAlert', 'كود التحقق: ' + d.code, 'success');
+                } else {
+                    showAlert('loginAlert', 'تم إرسال الكود لبريدك', 'success');
+                }
+                document.getElementById('emailForm').classList.add('hidden');
+                document.getElementById('codeForm').classList.remove('hidden');
+            } catch (err) {
+                showAlert('loginAlert', err.message, 'error');
+            }
+            btn.disabled = false;
+            btn.textContent = 'إرسال كود التحقق';
+        }
+
+        function backToEmail() {
+            document.getElementById('codeForm').classList.add('hidden');
+            document.getElementById('emailForm').classList.remove('hidden');
+            hideAlert('loginAlert');
+        }
+
+        // التحقق من الكود
+        async function verifyCode(e) {
+            e.preventDefault();
+            const btn = document.getElementById('verifyBtn');
+            btn.disabled = true;
+            hideAlert('loginAlert');
+
+            try {
+                const email = document.getElementById('loginEmail').value;
+                const code = document.getElementById('loginCode').value;
+                const res = await fetch(API + '/api/store/verify-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, merchant_id: merchantId, code })
+                });
+                const d = await res.json();
+                if (!res.ok) throw new Error(d.detail);
+
+                customer = d.customer;
+                showStore();
+            } catch (err) {
+                showAlert('loginAlert', err.message, 'error');
+            }
+            btn.disabled = false;
+        }
+
+        // عرض المتجر
+        function showStore() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('storeScreen').classList.remove('hidden');
+            document.getElementById('custName').textContent = customer.name;
+            document.getElementById('custBalance').textContent = customer.points_balance;
+            loadStoreProducts();
+            loadMyRedemptions();
+        }
+
+        // جلب المنتجات
+        async function loadStoreProducts() {
+            const grid = document.getElementById('productsGrid');
+            try {
+                const res = await fetch(API + '/api/store/merchant/' + merchantId + '/products');
+                const list = await res.json();
+
+                if (list.length === 0) {
+                    grid.innerHTML = '<p style="color:#555;grid-column:1/-1;text-align:center;padding:30px">لا توجد منتجات متوفرة حالياً</p>';
+                    return;
+                }
+
+                grid.innerHTML = list.map(p => {
+                    const canAfford = customer.points_balance >= p.points_cost;
+                    return `
+                    <div class="product-card">
+                        ${p.image_url ? '<img class="prod-img" src="' + esc(p.image_url) + '" alt="' + esc(p.name) + '" onerror="this.style.display=\'none\'">' : '<div class="prod-img" style="display:flex;align-items:center;justify-content:center;font-size:40px">🎁</div>'}
+                        ${p.category ? '<span class="prod-cat">' + esc(p.category) + '</span>' : ''}
+                        <div class="prod-name">${esc(p.name)}</div>
+                        <div class="prod-desc">${esc(p.description || '')}</div>
+                        <div class="prod-footer">
+                            <div>
+                                <div class="prod-price">${p.points_cost} <small>نقطة</small></div>
+                                <div class="prod-stock">${p.stock === -1 ? 'متوفر' : (p.stock > 0 ? 'متبقي: ' + p.stock : 'نفد')}</div>
+                            </div>
+                            <button class="btn btn-success btn-sm" ${canAfford && p.stock !== 0 ? '' : 'disabled'} onclick="redeemProduct('${p.id}','${esc(p.name)}',${p.points_cost})">
+                                ${canAfford ? 'استبدال' : 'رصيد غير كافٍ'}
+                            </button>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                grid.innerHTML = '<p style="color:#e94560">خطأ في تحميل المنتجات</p>';
+            }
+        }
+
+        // استبدال منتج
+        async function redeemProduct(productId, productName, cost) {
+            if (!confirm(`هل تريد استبدال "${productName}" مقابل ${cost} نقطة؟`)) return;
+            hideAlert('storeAlert');
+
+            try {
+                const res = await fetch(API + '/api/store/redeem?customer_id=' + customer.id + '&merchant_id=' + merchantId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ product_id: productId })
+                });
+                const d = await res.json();
+                if (!res.ok) throw new Error(d.detail);
+
+                customer.points_balance = d.new_balance;
+                document.getElementById('custBalance').textContent = d.new_balance;
+                showAlert('storeAlert', '🎉 ' + d.detail, 'success');
+                loadStoreProducts();
+                loadMyRedemptions();
+            } catch (err) {
+                showAlert('storeAlert', err.message, 'error');
+            }
+        }
+
+        // سجل استبدالاتي
+        async function loadMyRedemptions() {
+            const div = document.getElementById('myRedemptions');
+            try {
+                const res = await fetch(API + '/api/store/my-redemptions?customer_id=' + customer.id + '&merchant_id=' + merchantId);
+                const list = await res.json();
+
+                if (list.length === 0) {
+                    div.innerHTML = '<p style="color:#555;text-align:center;padding:20px">لم تقم بأي استبدال بعد</p>';
+                    return;
+                }
+
+                const statusAr = { pending: 'قيد المراجعة', approved: 'مقبول', rejected: 'مرفوض', delivered: 'تم التسليم' };
+                div.innerHTML = list.map(r => `
+                    <div class="redemption-item">
+                        <div>
+                            <strong>${esc(r.product_name)}</strong>
+                            <span style="color:#ffa502;margin-right:8px">-${r.points_spent} نقطة</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <span class="badge ${r.status}">${statusAr[r.status] || r.status}</span>
+                            <span style="color:#666;font-size:12px">${formatDate(r.created_at)}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                div.innerHTML = '<p style="color:#e94560">خطأ</p>';
+            }
+        }
+
+        // Helpers
+        function showAlert(id, msg, type) {
+            const el = document.getElementById(id);
+            el.textContent = msg;
+            el.className = 'alert ' + type;
+            el.style.display = 'block';
+        }
+        function hideAlert(id) { document.getElementById(id).style.display = 'none'; }
+        function formatDate(d) {
+            if (!d) return '';
+            return new Date(d).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+        function esc(s) {
+            if (!s) return '';
+            const el = document.createElement('span');
+            el.textContent = s;
+            return el.innerHTML;
+        }
+        function storeLogout() {
+            customer = null;
+            document.getElementById('storeScreen').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('loginCode').value = '';
+            document.getElementById('codeForm').classList.add('hidden');
+            document.getElementById('emailForm').classList.remove('hidden');
+            hideAlert('loginAlert');
+        }
+    </script>
+</body>
+</html>

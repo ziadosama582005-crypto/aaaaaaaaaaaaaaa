@@ -63,6 +63,17 @@
         .stat-card .label { color: #888; font-size: 13px; }
         .stat-card:nth-child(1) .number { color: #70a1ff; }
         .stat-card:nth-child(2) .number { color: #2ed573; }
+        .stat-card:nth-child(3) .number { color: #ffa502; }
+        .stat-card:nth-child(4) .number { color: #e94560; }
+
+        /* Badge */
+        .badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; }
+        .badge.active { background: rgba(46,213,115,0.15); color: #2ed573; }
+        .badge.inactive { background: rgba(128,128,128,0.15); color: #999; }
+        .badge.pending { background: rgba(255,165,2,0.15); color: #ffa502; }
+        .badge.approved { background: rgba(46,213,115,0.15); color: #2ed573; }
+        .badge.rejected { background: rgba(233,69,96,0.15); color: #e94560; }
+        .badge.delivered { background: rgba(112,161,255,0.15); color: #70a1ff; }
 
         /* Sections */
         .section {
@@ -255,6 +266,8 @@
         <div class="stats">
             <div class="stat-card"><div class="number" id="totalCust">0</div><div class="label">عدد العملاء</div></div>
             <div class="stat-card"><div class="number" id="totalBal">0</div><div class="label">إجمالي النقاط</div></div>
+            <div class="stat-card"><div class="number" id="totalProds">0</div><div class="label">المنتجات</div></div>
+            <div class="stat-card"><div class="number" id="pendingRedeems">0</div><div class="label">طلبات معلقة</div></div>
         </div>
 
         <!-- إضافة عميل -->
@@ -306,6 +319,62 @@
                 </table>
             </div>
         </div>
+
+        <!-- رابط المتجر -->
+        <div class="section" style="text-align:center">
+            <h3 class="section-title" style="justify-content:center">رابط متجرك للعملاء</h3>
+            <div style="display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap">
+                <input type="text" id="storeLink" readonly style="flex:1;max-width:400px;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#70a1ff;font-size:13px;text-align:center;direction:ltr">
+                <button class="btn btn-primary btn-sm" onclick="copyLink()">نسخ</button>
+            </div>
+        </div>
+
+        <!-- المنتجات -->
+        <div class="section">
+            <h3 class="section-title">
+                المنتجات (المكافآت)
+                <button class="btn btn-primary btn-sm" onclick="openProductModal()">+ إضافة منتج</button>
+            </h3>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>المنتج</th>
+                            <th>السعر (نقاط)</th>
+                            <th>المخزون</th>
+                            <th>التصنيف</th>
+                            <th>الحالة</th>
+                            <th>إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsTable">
+                        <tr><td colspan="6" class="empty">جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- طلبات الاستبدال -->
+        <div class="section">
+            <h3 class="section-title">طلبات الاستبدال</h3>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>العميل</th>
+                            <th>المنتج</th>
+                            <th>النقاط</th>
+                            <th>الحالة</th>
+                            <th>التاريخ</th>
+                            <th>إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="redemptionsTable">
+                        <tr><td colspan="6" class="empty">جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <!-- مودال إدارة النقاط -->
@@ -345,6 +414,44 @@
 
             <h4 style="margin-top:20px;margin-bottom:10px;font-size:14px;color:#888">سجل الحركات</h4>
             <div id="historyList" style="max-height:200px;overflow-y:auto"></div>
+        </div>
+    </div>
+
+    <!-- مودال إضافة/تعديل منتج -->
+    <div class="modal-overlay" id="productModal">
+        <div class="modal">
+            <button class="close-btn" onclick="closeProductModal()">&times;</button>
+            <h3 id="productModalTitle">إضافة منتج</h3>
+            <div id="productAlert" class="alert"></div>
+            <form onsubmit="submitProduct(event)">
+                <div class="form-group" style="margin-bottom:12px">
+                    <label>اسم المنتج *</label>
+                    <input type="text" id="prodName" required placeholder="مثال: قهوة مجانية">
+                </div>
+                <div class="form-group" style="margin-bottom:12px">
+                    <label>الوصف</label>
+                    <input type="text" id="prodDesc" placeholder="وصف قصير للمنتج">
+                </div>
+                <div class="form-group" style="margin-bottom:12px">
+                    <label>رابط الصورة (اختياري)</label>
+                    <input type="url" id="prodImage" placeholder="https://...">
+                </div>
+                <div class="form-row" style="margin-bottom:12px">
+                    <div class="form-group">
+                        <label>السعر بالنقاط *</label>
+                        <input type="number" id="prodCost" min="1" step="0.5" required placeholder="100">
+                    </div>
+                    <div class="form-group">
+                        <label>المخزون (-1 = غير محدود)</label>
+                        <input type="number" id="prodStock" min="-1" value="-1">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:15px">
+                    <label>التصنيف (اختياري)</label>
+                    <input type="text" id="prodCategory" placeholder="مثال: مشروبات">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%" id="prodBtn">إضافة</button>
+            </form>
         </div>
     </div>
 
@@ -569,6 +676,182 @@
 
         // تحميل البيانات
         loadCustomers();
+        loadProducts();
+        loadRedemptions();
+        setStoreLink();
+
+        // رابط المتجر
+        function setStoreLink() {
+            if (user.merchant) {
+                const link = window.location.origin + '/static/store.html?merchant=' + user.merchant.id;
+                document.getElementById('storeLink').value = link;
+            }
+        }
+        function copyLink() {
+            const input = document.getElementById('storeLink');
+            navigator.clipboard.writeText(input.value).then(() => alert('تم نسخ الرابط!')).catch(() => { input.select(); document.execCommand('copy'); alert('تم النسخ!'); });
+        }
+
+        // ═══════════ المنتجات ═══════════
+        let editingProductId = null;
+
+        async function loadProducts() {
+            const tbody = document.getElementById('productsTable');
+            try {
+                const res = await fetch(API + '/api/products/', { headers });
+                if (res.status === 401) return logout();
+                const list = await res.json();
+                document.getElementById('totalProds').textContent = list.length;
+
+                if (list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty">لا توجد منتجات. أضف أول منتج!</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = list.map(p => `
+                    <tr>
+                        <td><strong>${esc(p.name)}</strong>${p.description ? '<br><small style="color:#888">' + esc(p.description) + '</small>' : ''}</td>
+                        <td style="font-weight:bold;color:#ffa502">${p.points_cost}</td>
+                        <td>${p.stock === -1 ? '∞' : p.stock}</td>
+                        <td>${esc(p.category || '-')}</td>
+                        <td><span class="badge ${p.is_active ? 'active' : 'inactive'}">${p.is_active ? 'نشط' : 'معطل'}</span></td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" onclick='editProduct(${JSON.stringify(p)})'>تعديل</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">حذف</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty">خطأ في التحميل</td></tr>';
+            }
+        }
+
+        function openProductModal() {
+            editingProductId = null;
+            document.getElementById('productModalTitle').textContent = 'إضافة منتج';
+            document.getElementById('prodName').value = '';
+            document.getElementById('prodDesc').value = '';
+            document.getElementById('prodImage').value = '';
+            document.getElementById('prodCost').value = '';
+            document.getElementById('prodStock').value = '-1';
+            document.getElementById('prodCategory').value = '';
+            document.getElementById('prodBtn').textContent = 'إضافة';
+            hideAlertEl('productAlert');
+            document.getElementById('productModal').classList.add('show');
+        }
+
+        function editProduct(p) {
+            editingProductId = p.id;
+            document.getElementById('productModalTitle').textContent = 'تعديل المنتج';
+            document.getElementById('prodName').value = p.name;
+            document.getElementById('prodDesc').value = p.description || '';
+            document.getElementById('prodImage').value = p.image_url || '';
+            document.getElementById('prodCost').value = p.points_cost;
+            document.getElementById('prodStock').value = p.stock;
+            document.getElementById('prodCategory').value = p.category || '';
+            document.getElementById('prodBtn').textContent = 'حفظ التعديل';
+            hideAlertEl('productAlert');
+            document.getElementById('productModal').classList.add('show');
+        }
+
+        function closeProductModal() {
+            document.getElementById('productModal').classList.remove('show');
+            editingProductId = null;
+        }
+
+        async function submitProduct(e) {
+            e.preventDefault();
+            const btn = document.getElementById('prodBtn');
+            btn.disabled = true;
+            hideAlertEl('productAlert');
+
+            const data = {
+                name: document.getElementById('prodName').value,
+                description: document.getElementById('prodDesc').value || null,
+                image_url: document.getElementById('prodImage').value || null,
+                points_cost: parseFloat(document.getElementById('prodCost').value),
+                stock: parseInt(document.getElementById('prodStock').value),
+                category: document.getElementById('prodCategory').value || null,
+            };
+
+            try {
+                let res;
+                if (editingProductId) {
+                    res = await fetch(API + '/api/products/' + editingProductId, { method: 'PUT', headers, body: JSON.stringify(data) });
+                } else {
+                    res = await fetch(API + '/api/products/', { method: 'POST', headers, body: JSON.stringify(data) });
+                }
+                const d = await res.json();
+                if (!res.ok) throw new Error(d.detail || 'خطأ');
+                showAlertEl('productAlert', editingProductId ? 'تم تعديل المنتج!' : 'تم إضافة المنتج!', 'success');
+                loadProducts();
+                setTimeout(closeProductModal, 1000);
+            } catch (err) {
+                showAlertEl('productAlert', err.message, 'error');
+            }
+            btn.disabled = false;
+        }
+
+        async function deleteProduct(id) {
+            if (!confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
+            try {
+                const res = await fetch(API + '/api/products/' + id, { method: 'DELETE', headers });
+                if (!res.ok) { const d = await res.json(); throw new Error(d.detail); }
+                loadProducts();
+            } catch (err) { alert(err.message); }
+        }
+
+        // ═══════════ طلبات الاستبدال ═══════════
+        async function loadRedemptions() {
+            const tbody = document.getElementById('redemptionsTable');
+            try {
+                const res = await fetch(API + '/api/products/redemptions', { headers });
+                if (res.status === 401) return logout();
+                const list = await res.json();
+                document.getElementById('pendingRedeems').textContent = list.filter(r => r.status === 'pending').length;
+
+                if (list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty">لا توجد طلبات استبدال</td></tr>';
+                    return;
+                }
+                const statusAr = { pending: 'معلق', approved: 'مقبول', rejected: 'مرفوض', delivered: 'تم التسليم' };
+                tbody.innerHTML = list.map(r => `
+                    <tr>
+                        <td>${esc(r.customer_name || '-')}</td>
+                        <td>${esc(r.product_name)}</td>
+                        <td style="color:#ffa502">${r.points_spent}</td>
+                        <td><span class="badge ${r.status}">${statusAr[r.status] || r.status}</span></td>
+                        <td>${formatDate(r.created_at)}</td>
+                        <td>${redemptionActions(r)}</td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty">خطأ في التحميل</td></tr>';
+            }
+        }
+
+        function redemptionActions(r) {
+            if (r.status === 'pending') {
+                return `<button class="btn btn-success btn-sm" onclick="updateRedemption('${r.id}','approve')">موافقة</button>
+                        <button class="btn btn-danger btn-sm" onclick="updateRedemption('${r.id}','reject')">رفض</button>`;
+            }
+            if (r.status === 'approved') {
+                return `<button class="btn btn-primary btn-sm" onclick="updateRedemption('${r.id}','delivered')">تم التسليم</button>`;
+            }
+            return '-';
+        }
+
+        async function updateRedemption(id, action) {
+            if (!confirm('هل أنت متأكد؟')) return;
+            try {
+                const res = await fetch(API + '/api/products/redemptions/' + id, {
+                    method: 'PATCH', headers,
+                    body: JSON.stringify({ action })
+                });
+                if (!res.ok) { const d = await res.json(); throw new Error(d.detail); }
+                loadRedemptions();
+                loadCustomers();
+            } catch (err) { alert(err.message); }
+        }
     </script>
 </body>
 </html>

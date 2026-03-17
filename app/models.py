@@ -1,6 +1,6 @@
 """
 خدمة Firestore - عمليات CRUD على المجموعات
-Collections: users, merchants, customers, points_transactions
+Collections: users, merchants, customers, points_transactions, products, redemptions, verification_codes
 """
 
 import uuid
@@ -245,3 +245,145 @@ class PointsService:
         for doc in docs:
             total += doc.to_dict().get("amount", 0.0)
         return total
+
+
+# ═══════════════════════ Products ═══════════════════════
+
+class ProductService:
+    COLLECTION = "products"
+
+    @staticmethod
+    def create(db, *, merchant_id: str, name: str, description: str = None,
+               image_url: str = None, points_cost: float, stock: int = -1,
+               category: str = None) -> dict:
+        pid = generate_id()
+        data = {
+            "merchant_id": merchant_id,
+            "name": name,
+            "description": description,
+            "image_url": image_url,
+            "points_cost": points_cost,
+            "stock": stock,
+            "category": category,
+            "is_active": True,
+            "created_at": utcnow_str(),
+        }
+        db.collection(ProductService.COLLECTION).document(pid).set(data)
+        data["id"] = pid
+        return data
+
+    @staticmethod
+    def get_by_id(db, product_id: str) -> dict | None:
+        doc = db.collection(ProductService.COLLECTION).document(product_id).get()
+        if doc.exists:
+            d = doc.to_dict()
+            d["id"] = doc.id
+            return d
+        return None
+
+    @staticmethod
+    def list_by_merchant(db, merchant_id: str, active_only: bool = False) -> list[dict]:
+        query = db.collection(ProductService.COLLECTION).where("merchant_id", "==", merchant_id)
+        docs = query.stream()
+        result = [{"id": doc.id, **doc.to_dict()} for doc in docs]
+        if active_only:
+            result = [p for p in result if p.get("is_active", True)]
+        result.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        return result
+
+    @staticmethod
+    def update(db, product_id: str, **fields):
+        db.collection(ProductService.COLLECTION).document(product_id).update(fields)
+
+    @staticmethod
+    def delete(db, product_id: str):
+        db.collection(ProductService.COLLECTION).document(product_id).delete()
+
+
+# ═══════════════════════ Redemptions ═══════════════════════
+
+class RedemptionService:
+    COLLECTION = "redemptions"
+
+    @staticmethod
+    def create(db, *, customer_id: str, merchant_id: str, product_id: str,
+               product_name: str, points_spent: float) -> dict:
+        rid = generate_id()
+        data = {
+            "customer_id": customer_id,
+            "merchant_id": merchant_id,
+            "product_id": product_id,
+            "product_name": product_name,
+            "points_spent": points_spent,
+            "status": "pending",
+            "created_at": utcnow_str(),
+        }
+        db.collection(RedemptionService.COLLECTION).document(rid).set(data)
+        data["id"] = rid
+        return data
+
+    @staticmethod
+    def list_by_merchant(db, merchant_id: str) -> list[dict]:
+        docs = db.collection(RedemptionService.COLLECTION).where("merchant_id", "==", merchant_id).stream()
+        result = [{"id": doc.id, **doc.to_dict()} for doc in docs]
+        result.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        return result
+
+    @staticmethod
+    def list_by_customer(db, customer_id: str) -> list[dict]:
+        docs = db.collection(RedemptionService.COLLECTION).where("customer_id", "==", customer_id).stream()
+        result = [{"id": doc.id, **doc.to_dict()} for doc in docs]
+        result.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        return result
+
+    @staticmethod
+    def update_status(db, redemption_id: str, status: str):
+        db.collection(RedemptionService.COLLECTION).document(redemption_id).update({"status": status})
+
+    @staticmethod
+    def get_by_id(db, redemption_id: str) -> dict | None:
+        doc = db.collection(RedemptionService.COLLECTION).document(redemption_id).get()
+        if doc.exists:
+            d = doc.to_dict()
+            d["id"] = doc.id
+            return d
+        return None
+
+
+# ═══════════════════════ Verification Codes ═══════════════════════
+
+class VerificationCodeService:
+    COLLECTION = "verification_codes"
+
+    @staticmethod
+    def create(db, *, email: str, code: str, merchant_id: str) -> dict:
+        vid = generate_id()
+        data = {
+            "email": email,
+            "code": code,
+            "merchant_id": merchant_id,
+            "used": False,
+            "created_at": utcnow_str(),
+        }
+        db.collection(VerificationCodeService.COLLECTION).document(vid).set(data)
+        data["id"] = vid
+        return data
+
+    @staticmethod
+    def get_latest(db, email: str, merchant_id: str) -> dict | None:
+        docs = (
+            db.collection(VerificationCodeService.COLLECTION)
+            .where("email", "==", email)
+            .where("merchant_id", "==", merchant_id)
+            .where("used", "==", False)
+            .stream()
+        )
+        result = [{"id": doc.id, **doc.to_dict()} for doc in docs]
+        if not result:
+            return None
+        result.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        return result[0]
+
+    @staticmethod
+    def mark_used(db, code_id: str):
+        db.collection(VerificationCodeService.COLLECTION).document(code_id).update({"used": True})

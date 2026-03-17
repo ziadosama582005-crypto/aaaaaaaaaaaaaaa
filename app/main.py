@@ -12,7 +12,7 @@ from app.config import get_settings
 from app.database import init_firebase, get_db
 from app.models import UserService
 from app.auth import hash_password
-from app.routers import admin, merchants, customers, points
+from app.routers import admin, merchants, customers, points, products, store
 
 settings = get_settings()
 
@@ -68,6 +68,8 @@ app.include_router(merchants.router)
 app.include_router(admin.router)
 app.include_router(customers.router)
 app.include_router(points.router)
+app.include_router(products.router)
+app.include_router(store.router)
 
 # خدمة الملفات الثابتة (الواجهة)
 app.mount("/static", StaticFiles(directory="static"), name="static")
