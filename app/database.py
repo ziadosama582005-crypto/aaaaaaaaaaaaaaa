@@ -25,7 +25,12 @@ def init_firebase():
     # الطريقة 1: Base64 من متغير البيئة (Render)
     if settings.FIREBASE_CONFIG_BASE64:
         try:
-            decoded = base64.b64decode(settings.FIREBASE_CONFIG_BASE64)
+            b64 = settings.FIREBASE_CONFIG_BASE64.strip()
+            # إصلاح padding تلقائياً
+            missing_padding = len(b64) % 4
+            if missing_padding:
+                b64 += "=" * (4 - missing_padding)
+            decoded = base64.b64decode(b64)
             config_dict = json.loads(decoded)
             cred = credentials.Certificate(config_dict)
             firebase_admin.initialize_app(cred)
