@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     # --- SMTP (إرسال الإيميلات) ---
     SMTP_EMAIL: str = ""
     SMTP_PASSWORD: str = ""
-    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_SERVER: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
 
     model_config = {"env_file": ".env", "extra": "ignore"}

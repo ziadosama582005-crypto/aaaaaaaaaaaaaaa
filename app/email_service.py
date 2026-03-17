@@ -1,5 +1,5 @@
 """
-خدمة إرسال الإيميلات عبر SMTP (Gmail)
+خدمة إرسال الإيميلات عبر SMTP
 """
 
 import smtplib
@@ -36,10 +36,17 @@ def send_verification_email(to_email: str, code: str, store_name: str) -> bool:
     msg.attach(MIMEText(html, "html"))
 
     try:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
-            server.starttls()
-            server.login(settings.SMTP_EMAIL, settings.SMTP_PASSWORD)
-            server.sendmail(settings.SMTP_EMAIL, to_email, msg.as_string())
+        if settings.SMTP_PORT == 465:
+            # SSL مباشر (port 465)
+            with smtplib.SMTP_SSL(settings.SMTP_SERVER, settings.SMTP_PORT, timeout=10) as server:
+                server.login(settings.SMTP_EMAIL, settings.SMTP_PASSWORD)
+                server.sendmail(settings.SMTP_EMAIL, to_email, msg.as_string())
+        else:
+            # STARTTLS (port 587)
+            with smtplib.SMTP(settings.SMTP_SERVER, settings.SMTP_PORT, timeout=10) as server:
+                server.starttls()
+                server.login(settings.SMTP_EMAIL, settings.SMTP_PASSWORD)
+                server.sendmail(settings.SMTP_EMAIL, to_email, msg.as_string())
         return True
     except Exception as e:
         print(f"❌ فشل إرسال الإيميل: {e}")
