@@ -25,11 +25,14 @@ def init_firebase():
     # الطريقة 1: Base64 من متغير البيئة (Render)
     if settings.FIREBASE_CONFIG_BASE64:
         try:
-            b64 = settings.FIREBASE_CONFIG_BASE64.strip()
+            import re
+            # إزالة جميع المسافات والأسطر الجديدة
+            b64 = re.sub(r'\s+', '', settings.FIREBASE_CONFIG_BASE64)
             # إصلاح padding تلقائياً
             missing_padding = len(b64) % 4
             if missing_padding:
                 b64 += "=" * (4 - missing_padding)
+            print(f"🔍 Base64 length: {len(b64)}")
             decoded = base64.b64decode(b64)
             config_dict = json.loads(decoded)
             cred = credentials.Certificate(config_dict)
@@ -39,6 +42,8 @@ def init_firebase():
             return
         except Exception as e:
             print(f"⚠️ فشل Base64: {e}")
+            print(f"⚠️ أول 50 حرف: {settings.FIREBASE_CONFIG_BASE64[:50]}...")
+            print(f"⚠️ آخر 50 حرف: ...{settings.FIREBASE_CONFIG_BASE64[-50:]}")
 
     # الطريقة 2: ملف محلي (تطوير)
     if os.path.exists(settings.FIREBASE_CONFIG_PATH):
