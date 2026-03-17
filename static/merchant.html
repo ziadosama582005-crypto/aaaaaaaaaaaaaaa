@@ -147,6 +147,7 @@
         /* Table */
         .table-wrap {
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
             border-radius: 10px;
             border: 1px solid rgba(255,255,255,0.08);
         }
@@ -162,7 +163,6 @@
         td {
             padding: 10px 14px;
             border-top: 1px solid rgba(255,255,255,0.05);
-            white-space: nowrap;
         }
         tr:hover td { background: rgba(255,255,255,0.03); }
         .empty { text-align: center; padding: 30px; color: #555; }
@@ -234,22 +234,98 @@
                 flex-wrap: wrap;
             }
             .navbar .user-info span { font-size: 11px; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
-            .content { padding: 15px 10px; }
+            .content { padding: 15px 8px; }
             .stats { grid-template-columns: 1fr 1fr; gap: 10px; }
             .stat-card { padding: 15px 10px; }
             .stat-card .number { font-size: 24px; }
             .stat-card .label { font-size: 11px; }
-            .section { padding: 15px 12px; }
+            .section { padding: 15px 10px; }
             .section-title { font-size: 15px; }
             .form-row { grid-template-columns: 1fr; gap: 10px; }
             .form-group label { font-size: 12px; }
             .form-group input, .form-group select { font-size: 14px; padding: 10px; }
             .btn { padding: 10px 16px; font-size: 13px; }
             .search-bar input { font-size: 13px; padding: 10px; }
-            th, td { padding: 8px 6px; font-size: 12px; }
-            .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+            /* Mobile card-style tables */
+            .table-wrap { border: none; overflow: visible; }
+            table, thead, tbody, th, tr, td { display: block; }
+            thead { display: none; }
+            tr {
+                background: rgba(255,255,255,0.03);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 10px;
+                padding: 12px;
+                margin-bottom: 10px;
+                position: relative;
+            }
+            td {
+                padding: 4px 0;
+                border: none;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 13px;
+            }
+            td:before {
+                content: attr(data-label);
+                font-size: 11px;
+                color: #888;
+                min-width: 70px;
+            }
+            td:last-child { margin-top: 8px; }
+            .btn-sm { padding: 6px 12px; font-size: 11px; }
             .modal { padding: 20px 15px; width: 95%; }
         }
+
+        /* Custom Confirm Modal */
+        .confirm-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 300;
+            align-items: center;
+            justify-content: center;
+        }
+        .confirm-overlay.show { display: flex; }
+        .confirm-box {
+            background: #1a1a2e;
+            border: 1px solid rgba(55,66,250,0.3);
+            border-radius: 16px;
+            padding: 28px 24px;
+            width: 90%;
+            max-width: 380px;
+            text-align: center;
+        }
+        .confirm-box .confirm-icon { font-size: 40px; margin-bottom: 12px; }
+        .confirm-box .confirm-title { font-size: 17px; font-weight: bold; margin-bottom: 8px; color: #fff; }
+        .confirm-box .confirm-msg { font-size: 14px; color: #aaa; margin-bottom: 24px; line-height: 1.6; }
+        .confirm-box .confirm-btns { display: flex; gap: 10px; }
+        .confirm-box .confirm-btns button { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: bold; }
+        .confirm-box .btn-confirm-yes { background: #3742fa; color: #fff; }
+        .confirm-box .btn-confirm-no { background: rgba(255,255,255,0.08); color: #aaa; }
+        .confirm-box .btn-confirm-danger { background: #e94560; color: #fff; }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: #1a1a2e;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 14px 24px;
+            font-size: 14px;
+            z-index: 400;
+            transition: transform 0.3s ease;
+            max-width: 90%;
+            text-align: center;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.success { border-color: rgba(46,213,115,0.4); color: #2ed573; }
+        .toast.error { border-color: rgba(233,69,96,0.4); color: #e94560; }
     </style>
 </head>
 <body>
@@ -455,6 +531,22 @@
         </div>
     </div>
 
+    <!-- مودال التأكيد المخصص -->
+    <div class="confirm-overlay" id="confirmModal">
+        <div class="confirm-box">
+            <div class="confirm-icon">⚠️</div>
+            <div class="confirm-title" id="confirmTitle">تأكيد</div>
+            <div class="confirm-msg" id="confirmMsg">هل أنت متأكد؟</div>
+            <div class="confirm-btns">
+                <button class="btn-confirm-yes" id="confirmYes">نعم</button>
+                <button class="btn-confirm-no" id="confirmNo">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toastEl"></div>
+
     <script>
         const API = window.location.origin;
         const token = localStorage.getItem('token');
@@ -472,6 +564,30 @@
 
         let currentCustomerId = null;
         let searchTimer = null;
+
+        // مودال التأكيد المخصص
+        function showConfirm(title, msg, icon, dangerBtn) {
+            return new Promise(resolve => {
+                document.getElementById('confirmTitle').textContent = title;
+                document.getElementById('confirmMsg').textContent = msg;
+                document.getElementById('confirmModal').querySelector('.confirm-icon').textContent = icon || '⚠️';
+                const yesBtn = document.getElementById('confirmYes');
+                yesBtn.className = dangerBtn ? 'btn-confirm-danger' : 'btn-confirm-yes';
+                yesBtn.textContent = dangerBtn ? 'حذف' : 'نعم';
+                document.getElementById('confirmModal').classList.add('show');
+                yesBtn.onclick = () => { document.getElementById('confirmModal').classList.remove('show'); resolve(true); };
+                document.getElementById('confirmNo').onclick = () => { document.getElementById('confirmModal').classList.remove('show'); resolve(false); };
+            });
+        }
+
+        // Toast notification
+        function showToast(msg, type) {
+            const t = document.getElementById('toastEl');
+            t.textContent = msg;
+            t.className = 'toast ' + (type || 'success');
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
 
         // جلب العملاء
         async function loadCustomers() {
@@ -493,11 +609,11 @@
 
                 tbody.innerHTML = list.map(c => `
                     <tr>
-                        <td><strong>${esc(c.name)}</strong></td>
-                        <td>${esc(c.email || '-')}</td>
-                        <td>${esc(c.phone || '-')}</td>
-                        <td style="font-weight:bold;color:${c.points_balance > 0 ? '#2ed573' : '#888'}">${c.points_balance}</td>
-                        <td>
+                        <td data-label="الاسم"><strong>${esc(c.name)}</strong></td>
+                        <td data-label="البريد">${esc(c.email || '-')}</td>
+                        <td data-label="الجوال">${esc(c.phone || '-')}</td>
+                        <td data-label="الرصيد" style="font-weight:bold;color:${c.points_balance > 0 ? '#2ed573' : '#888'}">${c.points_balance}</td>
+                        <td data-label="">
                             <button class="btn btn-primary btn-sm" onclick="openPoints('${c.id}','${esc(c.name)}',${c.points_balance})">نقاط</button>
                         </td>
                     </tr>
@@ -530,11 +646,11 @@
 
                 tbody.innerHTML = list.map(c => `
                     <tr>
-                        <td><strong>${esc(c.name)}</strong></td>
-                        <td>${esc(c.email || '-')}</td>
-                        <td>${esc(c.phone || '-')}</td>
-                        <td style="font-weight:bold;color:${c.points_balance > 0 ? '#2ed573' : '#888'}">${c.points_balance}</td>
-                        <td>
+                        <td data-label="الاسم"><strong>${esc(c.name)}</strong></td>
+                        <td data-label="البريد">${esc(c.email || '-')}</td>
+                        <td data-label="الجوال">${esc(c.phone || '-')}</td>
+                        <td data-label="الرصيد" style="font-weight:bold;color:${c.points_balance > 0 ? '#2ed573' : '#888'}">${c.points_balance}</td>
+                        <td data-label="">
                             <button class="btn btn-primary btn-sm" onclick="openPoints('${c.id}','${esc(c.name)}',${c.points_balance})">نقاط</button>
                         </td>
                     </tr>
@@ -689,7 +805,7 @@
         }
         function copyLink() {
             const input = document.getElementById('storeLink');
-            navigator.clipboard.writeText(input.value).then(() => alert('تم نسخ الرابط!')).catch(() => { input.select(); document.execCommand('copy'); alert('تم النسخ!'); });
+            navigator.clipboard.writeText(input.value).then(() => showToast('✅ تم نسخ الرابط!', 'success')).catch(() => { input.select(); document.execCommand('copy'); showToast('✅ تم النسخ!', 'success'); });
         }
 
         // ═══════════ المنتجات ═══════════
@@ -709,12 +825,12 @@
                 }
                 tbody.innerHTML = list.map(p => `
                     <tr>
-                        <td><strong>${esc(p.name)}</strong>${p.description ? '<br><small style="color:#888">' + esc(p.description) + '</small>' : ''}</td>
-                        <td style="font-weight:bold;color:#ffa502">${p.points_cost}</td>
-                        <td>${p.stock === -1 ? '∞' : p.stock}</td>
-                        <td>${esc(p.category || '-')}</td>
-                        <td><span class="badge ${p.is_active ? 'active' : 'inactive'}">${p.is_active ? 'نشط' : 'معطل'}</span></td>
-                        <td>
+                        <td data-label="المنتج"><strong>${esc(p.name)}</strong>${p.description ? '<br><small style="color:#888">' + esc(p.description) + '</small>' : ''}</td>
+                        <td data-label="السعر (نقاط)" style="font-weight:bold;color:#ffa502">${p.points_cost}</td>
+                        <td data-label="المخزون">${p.stock === -1 ? '∞' : p.stock}</td>
+                        <td data-label="التصنيف">${esc(p.category || '-')}</td>
+                        <td data-label="الحالة"><span class="badge ${p.is_active ? 'active' : 'inactive'}">${p.is_active ? 'نشط' : 'معطل'}</span></td>
+                        <td data-label="">
                             <button class="btn btn-primary btn-sm" onclick='editProduct(${JSON.stringify(p)})'>تعديل</button>
                             <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">حذف</button>
                         </td>
@@ -792,12 +908,14 @@
         }
 
         async function deleteProduct(id) {
-            if (!confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
+            const ok = await showConfirm('حذف المنتج', 'هل أنت متأكد من حذف هذا المنتج؟', '🗑️', true);
+            if (!ok) return;
             try {
                 const res = await fetch(API + '/api/products/' + id, { method: 'DELETE', headers });
                 if (!res.ok) { const d = await res.json(); throw new Error(d.detail); }
                 loadProducts();
-            } catch (err) { alert(err.message); }
+                showToast('✅ تم حذف المنتج', 'success');
+            } catch (err) { showToast('❌ ' + err.message, 'error'); }
         }
 
         // ═══════════ طلبات الاستبدال ═══════════
@@ -816,12 +934,12 @@
                 const statusAr = { pending: 'معلق', approved: 'مقبول', rejected: 'مرفوض', delivered: 'تم التسليم' };
                 tbody.innerHTML = list.map(r => `
                     <tr>
-                        <td>${esc(r.customer_name || '-')}</td>
-                        <td>${esc(r.product_name)}</td>
-                        <td style="color:#ffa502">${r.points_spent}</td>
-                        <td><span class="badge ${r.status}">${statusAr[r.status] || r.status}</span></td>
-                        <td>${formatDate(r.created_at)}</td>
-                        <td>${redemptionActions(r)}</td>
+                        <td data-label="العميل">${esc(r.customer_name || '-')}</td>
+                        <td data-label="المنتج">${esc(r.product_name)}</td>
+                        <td data-label="النقاط" style="color:#ffa502">${r.points_spent}</td>
+                        <td data-label="الحالة"><span class="badge ${r.status}">${statusAr[r.status] || r.status}</span></td>
+                        <td data-label="التاريخ">${formatDate(r.created_at)}</td>
+                        <td data-label="">${redemptionActions(r)}</td>
                     </tr>
                 `).join('');
             } catch (e) {
@@ -841,7 +959,10 @@
         }
 
         async function updateRedemption(id, action) {
-            if (!confirm('هل أنت متأكد؟')) return;
+            const msgs = { approve: 'هل تريد الموافقة على هذا الطلب؟', reject: 'هل تريد رفض هذا الطلب؟ سيتم إرجاع النقاط للعميل', delivered: 'هل تم تسليم هذا الطلب للعميل؟' };
+            const icons = { approve: '✅', reject: '❌', delivered: '📦' };
+            const ok = await showConfirm('تأكيد', msgs[action] || 'هل أنت متأكد؟', icons[action] || '⚠️', action === 'reject');
+            if (!ok) return;
             try {
                 const res = await fetch(API + '/api/products/redemptions/' + id, {
                     method: 'PATCH', headers,
@@ -850,7 +971,8 @@
                 if (!res.ok) { const d = await res.json(); throw new Error(d.detail); }
                 loadRedemptions();
                 loadCustomers();
-            } catch (err) { alert(err.message); }
+                showToast('✅ تم تحديث حالة الطلب', 'success');
+            } catch (err) { showToast('❌ ' + err.message, 'error'); }
         }
     </script>
 </body>
