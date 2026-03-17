@@ -2,9 +2,15 @@
 مخططات Pydantic - التحقق من المدخلات وتنسيق المخرجات
 """
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
 from datetime import datetime
+
+
+def validate_gmail(email: str) -> str:
+    if not email.lower().endswith('@gmail.com'):
+        raise ValueError('يجب أن ينتهي البريد بـ @gmail.com')
+    return email.lower()
 
 
 # ──────────────────────── Auth ────────────────────────
@@ -18,6 +24,11 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+    @field_validator('email')
+    @classmethod
+    def check_gmail(cls, v):
+        return validate_gmail(v)
+
 
 # ──────────────────────── Merchant ────────────────────────
 
@@ -27,6 +38,11 @@ class MerchantRegisterRequest(BaseModel):
     phone: Optional[str] = None
     email: EmailStr
     password: str = Field(..., min_length=6)
+
+    @field_validator('email')
+    @classmethod
+    def check_gmail(cls, v):
+        return validate_gmail(v)
 
 
 class MerchantOut(BaseModel):
@@ -50,6 +66,13 @@ class CustomerCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
+
+    @field_validator('email')
+    @classmethod
+    def check_gmail(cls, v):
+        if v is None:
+            return v
+        return validate_gmail(v)
 
 
 class CustomerOut(BaseModel):
