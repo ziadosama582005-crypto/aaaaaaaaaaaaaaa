@@ -14,6 +14,7 @@ from app.models import (
     RedemptionService, VerificationCodeService, PointsService,
 )
 from app.schemas import StoreLoginRequest, StoreVerifyRequest, StoreRedeemRequest
+from app.email_service import send_verification_email
 
 router = APIRouter(prefix="/api/store", tags=["Store"])
 
@@ -45,9 +46,14 @@ def send_verification_code(body: StoreLoginRequest):
     code = _generate_code()
     VerificationCodeService.create(db, email=body.email.lower(), code=code, merchant_id=body.merchant_id)
 
-    # في بيئة حقيقية يُرسل الكود عبر الإيميل
-    # هنا نعرضه مباشرة للتسهيل
-    return {"detail": "تم إرسال كود التحقق", "code": code}
+    # إرسال الكود عبر الإيميل
+    email_sent = send_verification_email(body.email, code, merchant.get("store_name", "المتجر"))
+
+    if email_sent:
+        return {"detail": "تم إرسال كود التحقق إلى بريدك الإلكتروني"}
+    else:
+        # إذا فشل الإرسال (SMTP غير مُعد) نعرض الكود مباشرة
+        return {"detail": "تم إرسال كود التحقق", "code": code}
 
 
 @router.post("/verify-code")
